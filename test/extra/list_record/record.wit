@@ -1,0 +1,6 @@
+record bar {
+    name: string,
+    age: s32
+}
+
+test-list-record: function(a: list<bar>) -> s32
