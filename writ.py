@@ -141,14 +141,10 @@ class Imports:
         # process arguments
         py_class_name = "".join(x.capitalize() for x in self.wit_file_name.split("_"))
         type_list = self.get_types(py_class_name)
-        #  print("py_class_name: ", py_class_name)
-        #  print("type_list: ", type_list)
 
         # evaluate
         ccommand = "self.imported." + py_class_name + "(store, linker, module)"
-        #  print(ccommand)
         wasm = eval(ccommand)
-        #  print("LOAD JSON: " + "\n".join([str(json.loads(x)) for x in self.args]))
 
         classes = dict(inspect.getmembers(self.imported, inspect.isclass))
         parse_args_helper = parse_json.ParseJson(classes, self.imported)
@@ -161,8 +157,6 @@ class Imports:
             )
             + ")"
         )
-
-        print("command: ", command)
 
         try:
             result = eval(command)

@@ -70,12 +70,11 @@ class ParseJson:
 
     def process_arg(self, arg: (typing.Any, typing.types)) -> str:
         arg_value, arg_type = arg[0], arg[1]
-        print(
-            "arg_value, arg_type, arg_value_type = {}, {}, {}".format(
-                arg_value, arg_type, type(arg_value)
-            )
-        )
-        # TODO: split checking if arg_value type match with arg_type for better debugging
+        #  print(
+        #  "arg_value, arg_type, arg_value_type = {}, {}, {}".format(
+        #  arg_value, arg_type, type(arg_value)
+        #  )
+        #  )
         if is_atomic_type(arg_value):
             if type(arg_value) is not arg_type:
                 error_handler.return_error(
@@ -102,7 +101,4 @@ class ParseJson:
             )
 
     def parse_json_args(self, args: list[(str, typing.types)]) -> str:
-        print("MY ARGS: " + str(args))
-        result = ",".join(map(lambda x: self.process_arg(x), args))
-        print("RESULT IS " + result)
-        return result
+        return ",".join(map(lambda x: self.process_arg(x), args))
