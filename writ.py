@@ -1,9 +1,12 @@
+import argparse
 import collections
+import error_handler
 import importlib
 import inspect
 import json
 import operator
 import os
+import parse_input
 import parse_json
 import re
 import string
@@ -11,7 +14,6 @@ import subprocess
 import sys
 import typing
 import wasmtime
-import error_handler
 from enum import Enum
 from typing import Optional
 
@@ -21,6 +23,9 @@ binding_path = "binds/"
 class ErrorCode(Enum):
     CONVERT_TO_JSON_FAIL = "fail to convert to json string"
     INVOKE_INITIALIZE_FAIL = "fail to invoke _initialize"
+    MISSING_INPUT = (
+        "either wasm file path or function name is missing from the input arguments"
+    )
     OBJECT_NOT_FOUND = "no object found in target: "
     PATH_NOT_EXIST = "file path doesn't exist: "
     TYPE_NOT_IMPLEMENTED = "type not implemented: "
@@ -49,49 +54,39 @@ class Imports:
     args: [str]
     classes: dict
 
-    def __init__(self, cmd_args: list[str]) -> None:
-        if cmd_args[1] == "--wit":
-            wit_path = cmd_args[2]
+    def __init__(self) -> None:
+        (binding_path, wit_path, input_args) = parse_input.parse()
+        if len(input_args) < 2:
+            error_handler.return_error(ErrorCode.MISSING_INPUT.value)
+        if binding_path[-1] != "/":
+            binding_path += "/"
+
+        self.wasm_file = input_args[0]
+        self.func = input_args[1].replace("-", "_")
+        self.args = [json.loads(x) for x in input_args[2:]]
+
+        if wit_path is None:
+            self.wit_file_name = None
+        else:
             self.wit_file_name = re.findall(r"[^\/]+(?=\.)", wit_path)[-1]
 
             # generate bindings
-            export_file_name = "{}_export_bindings".format(self.wit_file_name)
-            import_file_name = "{}_import_bindings".format(self.wit_file_name)
-            export_file_path = "{}{}.py".format(binding_path, export_file_name)
-            import_file_path = "{}{}.py".format(binding_path, import_file_name)
+            export_file_name = f"{self.wit_file_name}_export_bindings"
+            import_file_name = f"{self.wit_file_name}_import_bindings"
+            export_file_path = f"{binding_path}{export_file_name}.py"
+            import_file_path = f"{binding_path}{import_file_name}.py"
 
             if not os.path.exists(export_file_path):
-                error_handler.assert_and_run_command(
-                    not os.path.exists(wit_path),
-                    ErrorCode.PATH_NOT_EXIST.value + wit_path,
-                    "wit-bindgen wasmtime-py --export " + wit_path,
-                )
-                os.system("mv bindings.py {}".format(export_file_path))
+                os.system("wit-bindgen wasmtime-py --export " + wit_path)
+                os.system(f"mv bindings.py {export_file_path}")
 
             if not os.path.exists(import_file_path):
-                error_handler.assert_and_run_command(
-                    not os.path.exists(wit_path),
-                    ErrorCode.PATH_NOT_EXIST.value + wit_path,
-                    "wit-bindgen wasmtime-py --import " + wit_path,
-                )
-                os.system("mv bindings.py {}".format(import_file_path))
+                os.system("wit-bindgen wasmtime-py --import " + wit_path)
+                os.system(f"mv bindings.py {import_file_path}")
 
-            self.imported = importlib.import_module(
-                import_file_path.replace("/", ".")[:-3]
-            )
-            self.exported = importlib.import_module(
-                export_file_path.replace("/", ".")[:-3]
-            )
-
-            # parse the rest
-            self.wasm_file = cmd_args[3]
-            self.func = cmd_args[4].replace("-", "_")
-            self.args = cmd_args[5:]
-        else:  # need to validate the file path
-            self.wit_file_name = None
-            self.wasm_file = cmd_args[1]
-            self.func = cmd_args[2]
-            self.args = cmd_args[3:]
+            sys.path.insert(1, binding_path)
+            self.imported = importlib.import_module(import_file_name)
+            self.exported = importlib.import_module(export_file_name)
 
     def get_types(self, class_name: str) -> list[typing.types]:
         py_import_classes = inspect.getmembers(
@@ -152,9 +147,7 @@ class Imports:
             "wasm."
             + self.func
             + "(store,"
-            + parse_args_helper.parse_json_args(
-                list(zip(list(map(json.loads, self.args)), type_list[2:]))
-            )
+            + parse_args_helper.parse_json_args(list(zip(self.args, type_list[2:])))
             + ")"
         )
 
@@ -165,9 +158,9 @@ class Imports:
         return result
 
 
-def run(cmd_args: list[str]) -> Optional[str]:
+def run() -> Optional[str]:
     # initialize
-    imports = Imports(cmd_args)
+    imports = Imports()
 
     store = wasmtime.Store()
     module = wasmtime.Module.from_file(store.engine, imports.wasm_file)
@@ -196,14 +189,12 @@ def run(cmd_args: list[str]) -> Optional[str]:
 
 
 if __name__ == "__main__":
-    result = run(sys.argv)
+    result = run()
     if result is None:
         print(ErrorCode.UNKNOWN.value, file=sys.stderr)
     else:
-        print("FINAL RESULT: {}".format(result))
         json_result = json.dumps(to_json(result))
         if json_result is None:
             print(ErrorCode.CONVERT_TO_JSON_FAIL.value, file=sys.stderr)
         else:
-            print("FINAL RESULT IN JSON FORMAT:")
             print(json_result)
