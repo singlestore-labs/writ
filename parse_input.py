@@ -8,7 +8,7 @@ def valid_path(arg_path: str):
     if os.path.exists(arg_path):
         return arg_path
     else:
-        raise argparse.ArgumentTypeError(msg)
+        raise argparse.ArgumentTypeError(f"{arg_path} does not exist!")
 
 
 def parse():

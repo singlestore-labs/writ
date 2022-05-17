@@ -1,4 +1,3 @@
-import os
 import sys
 import typing
 
@@ -16,11 +15,3 @@ def assert_and_return(
         sys.exit()
     else:
         return value
-
-
-def assert_and_run_command(err_cond: bool, err_message: str, command: str) -> None:
-    if err_cond:
-        print("ERROR: " + err_message, file=sys.stderr)
-        sys.exit()
-    else:
-        os.system(command)
