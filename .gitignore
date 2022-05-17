@@ -14,3 +14,4 @@ __pycache__/
 !**/target/debug/
 !**/.vscode/
 !**/target/
+!**/binds/
