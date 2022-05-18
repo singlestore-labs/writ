@@ -62,7 +62,7 @@ class Imports:
             binding_path += "/"
 
         self.wasm_file = input_args[0]
-        self.func = input_args[1].replace("-", "_")
+        self.func = input_args[1]
         self.args = [json.loads(x) for x in input_args[2:]]
 
         if wit_path is None:
@@ -120,10 +120,9 @@ class Imports:
         command = ["wasmtime", "run", "--invoke", self.func, self.wasm_file] + [
             str(x) for x in self.args
         ]
-        #  print("command: ", command)
         try:
             result = subprocess.run(command, capture_output=True)
-            return result.stdout.decode("utf-8")
+            return result.stdout.decode("utf-8").rstrip()
         except:
             return None  # error handling here
 
@@ -132,6 +131,8 @@ class Imports:
     ) -> Optional[str]:
         linker_func_name = "add_" + self.wit_file_name + "_to_linker"
         eval("self.exported." + linker_func_name + "(linker, store, self)")
+
+        self.func = self.func.replace("-", "_")
 
         # process arguments
         py_class_name = "".join(x.capitalize() for x in self.wit_file_name.split("_"))
