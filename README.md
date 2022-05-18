@@ -44,8 +44,8 @@ There are a few examples in `/test` directory. Running from `writ` base director
 
 1. `power` example: 
 ```sh
-python3 writ.py --wit test/int/power.wit test/int/power.wasm power-of 2 3
-python3 writ.py test/int/power.wasm power-of 2 3
+./writ --wit test/int/power.wit test/int/power.wasm power-of 2 3
+./writ test/int/power.wasm power-of 2 3
 ```
 Output:
 ```console
@@ -54,7 +54,7 @@ Output:
 
 2. `split string` example:
 ```sh
-python3 writ.py --wit test/string/split.wit test/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
+./writ --wit test/string/split.wit test/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
 ```
 Output:
 ```console
@@ -64,16 +64,16 @@ Output:
 3. Same `power` example, but for float type
 float:
 ```sh
-python3 writ.py --wit test/float/power.wit test/int/power.wasm power-of 2 3
-python3 writ.py test/float/power.wasm power-of 2 3
+./writ --wit test/float/power.wit test/float/power.wasm power-of 2.0 3.0
+./writ test/float/power.wasm power-of 2.0 3.0
 ```
 Output:
 ```console
-8.0000
+8.0
 ```
 4. a machine learning model `sentiment analysis` example:
 ```
-python3 writ.py --wit test/sentiment/sentiment.wit  test/sentiment/sentiment.wasm sentiment  '"have_a_nice_day"' '"_"'
+./writ --wit test/sentiment/sentiment.wit  test/sentiment/sentiment.wasm sentiment  '"have_a_nice_day"' '"_"'
 ```
 Output:
 ```console
@@ -83,7 +83,7 @@ Output:
 5. `record` examples:
 * Construct a struct `bar` giving a `string name` and an `integer age`:
 ```sh
-python3 writ.py --wit test/record/record.wit test/record/record.wasm construct-bar '"meow"' 22
+./writ --wit test/record/record.wit test/record/record.wasm construct-bar '"meow"' 22
 ```
 Output:
 ```console
@@ -91,7 +91,7 @@ Output:
 ```
 * Apply a function on a given struct (`bar`)
 ```sh
- python3 writ.py --wit test/record/record.wit test/record/record.wasm bar '{"name": "meow", "age": 22}'
+ ./writ --wit test/record/record.wit test/record/record.wasm bar '{"name": "meow", "age": 22}'
 ```
 Output:
 ```console
@@ -100,7 +100,7 @@ Output:
 
 * Construct a nested struct given an input
 ```sh
-python3 writ.py --wit test/record/record.wit test/record/record.wasm deeper-bar '{"name": "meow", "age": 22}'
+./writ --wit test/record/record.wit test/record/record.wasm deeper-bar '{"name": "meow", "age": 22}'
 ```
 Output:
 ```console
@@ -109,7 +109,7 @@ Output:
 
 * Apply a function on a nested struct
 ```sh
- python3 writ.py --wit test/record/record.wit test/record/record.wasm rev-deeper-bar '{"id": 2, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}'
+ ./writ --wit test/record/record.wit test/record/record.wasm rev-deeper-bar '{"id": 2, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}'
 ```
 Output:
 ```console
@@ -118,7 +118,7 @@ Output:
 
 6. Apply a function on a list of records (or any types that can be presented as JSON)
 ```sh
-python3 writ.py --wit test/list_record/list_record.wit test/list_record/list_record.wasm test-list-record '[{"name": "doggo", "age": 42}, {"name":"meow", "age":28}]'
+./writ --wit test/list_record/list_record.wit test/list_record/list_record.wasm test-list-record '[{"name": "doggo", "age": 42}, {"name":"meow", "age":28}]'
 ```
 Output
 ```console
@@ -128,7 +128,7 @@ Output
 
 Notice: Bytes has to be presented as an array of integer, each integer represent one byte
 ```sh
-python3 writ.py --wit test/hilbert/hilbert.wit test/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
+./writ --wit test/hilbert/hilbert.wit test/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
 ```
 Output:
 ```console

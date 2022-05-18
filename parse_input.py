@@ -3,6 +3,14 @@ import json
 import os
 
 
+def check_binding_path(binding_path: str) -> str:
+    if binding_path[-1] != "/":
+        binding_path += "/"
+    if not os.path.isdir(binding_path):
+        os.makedirs(binding_path)
+    return binding_path
+
+
 def valid_path(arg_path: str):
     """custom argparse *path file* type for user path values given from the command line"""
     if os.path.exists(arg_path):
@@ -17,11 +25,11 @@ def parse():
         "-b",
         "--bindings",
         dest="binding_path",
-        type=valid_path,
+        type=check_binding_path,
         nargs="?",
-        default="/var/tmp/",
+        default=f"/tmp/writ-bind-cache-{os.getlogin()}/",
         required=False,
-        help="path to the binding folder",
+        help="directory path to use for the binding cache",
     )
     parser.add_argument(
         "-w",
@@ -31,12 +39,12 @@ def parse():
         nargs="?",
         default=None,
         required=False,
-        help="path to the wit file",
+        help="path to the WIT file",
     )
     parser.add_argument(
         dest="input_args",
         nargs=argparse.REMAINDER,
-        help="path to the wasm file, function name, input in json format",
+        help="path to the Wasm module, function name, and arguments in JSON format",
     )
     args = parser.parse_args()
     return args.binding_path, args.wit_path, args.input_args

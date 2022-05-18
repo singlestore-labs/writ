@@ -30,7 +30,7 @@ float __wasm_export_power_power_of(float arg, float arg0) {
 float power_power_of(float base, float exp)
 {
     float res = 1;
-    for (float i = 0; i < exp; ++i)
+    for (int i = 0; i < exp; ++i)
     {
         res *= base;
     }
