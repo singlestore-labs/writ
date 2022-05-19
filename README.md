@@ -73,11 +73,11 @@ Output:
 ```
 4. a machine learning model `sentiment analysis` example:
 ```
-./writ --wit test/sentiment/sentiment.wit  test/sentiment/sentiment.wasm sentiment  '"have_a_nice_day"' '"_"'
+ ./writ --wit test/sentiment/sentiment.wit  test/sentiment/sentiment.wasm sentiment '"have a nice day"'
 ```
 Output:
 ```console
-{"compound": 0.0, "positive": 0.0, "negative": 0.0, "neutral": 1.0}
+{"compound": 0.4214636152117623, "positive": 0.5833333333333334, "negative": 0.0, "neutral": 0.4166666666666667}
 ```
 
 5. `record` examples:
