@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <power.h>
+#include <math.h>
 
 __attribute__((weak, export_name("canonical_abi_realloc")))
 void *canonical_abi_realloc(
@@ -29,10 +30,5 @@ float __wasm_export_power_power_of(float arg, float arg0) {
 }
 float power_power_of(float base, float exp)
 {
-    float res = 1;
-    for (int i = 0; i < exp; ++i)
-    {
-        res *= base;
-    }
-    return res;
+    return powf(base, exp);
 }

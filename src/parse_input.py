@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import pwd
 
 
 def check_binding_path(binding_path: str) -> str:
@@ -27,7 +28,7 @@ def parse():
         dest="binding_path",
         type=check_binding_path,
         nargs="?",
-        default=f"/tmp/writ-bind-cache-{os.getlogin()}/",
+        default=f"/tmp/writ-bind-cache-{pwd.getpwuid(os.getuid())[0]}/",
         required=False,
         help="directory path to use for the binding cache",
     )
