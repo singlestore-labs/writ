@@ -46,7 +46,9 @@ class Imports:
         if len(input_args) < 2:
             error_handler.return_error(ErrorCode.MISSING_INPUT.value)
 
-        self.wasm_file = input_args[0]
+        self.wasm_file = parse_input.set_default_binding_path(
+            "WRIT_WASMTIME_PATH", input_args[0]
+        )
         self.func = input_args[1]
         self.args = [
             json_utils.check_and_load(input_args, index)
