@@ -46,9 +46,7 @@ class Imports:
         if len(input_args) < 2:
             error_handler.return_error(ErrorCode.MISSING_INPUT.value)
 
-        self.wasm_file = parse_input.set_default_binding_path(
-            "WRIT_WASMTIME_PATH", input_args[0]
-        )
+        self.wasm_file = input_args[0]
         self.func = input_args[1]
         self.args = [
             json_utils.check_and_load(input_args, index)
@@ -67,7 +65,9 @@ class Imports:
             import_path = f"{binding_path}{import_name}.py"
             wit_cached_path = f"{binding_path}{self.wit_name}.wit"
 
-            WIT_BINDGEN_PATH = validate.check_command("wit-bindgen")
+            WIT_BINDGEN_PATH = validate.check_command(
+                "WRIT_WITBINDGEN_PATH", "wit-bindgen"
+            )
 
             validate.check_cached_file_or_generate(
                 WIT_BINDGEN_PATH,
@@ -110,7 +110,7 @@ class Imports:
         )
 
     def run_without_wit_arg(self) -> Optional[str]:
-        WASMTIME_CMD = validate.check_command("wasmtime")
+        WASMTIME_CMD = validate.check_command("WRIT_WASMTIME_PATH", "wasmtime")
         command = [WASMTIME_CMD, "run", "--invoke", self.func, self.wasm_file] + [
             str(x) for x in self.args
         ]

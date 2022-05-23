@@ -12,13 +12,6 @@ def check_binding_path(binding_path: str) -> str:
     return binding_path
 
 
-def set_default_binding_path(ENV_NAME, DEFAULT_PATH: str) -> str:
-    ENV_PATH = os.environ.get(ENV_NAME)
-    if ENV_PATH is not None:
-        return ENV_PATH
-    return DEFAULT_PATH
-
-
 def valid_path(arg_path: str):
     """custom argparse *path file* type for user path values given from the command line"""
     if os.path.exists(arg_path):
@@ -35,10 +28,7 @@ def parse():
         dest="binding_path",
         type=check_binding_path,
         nargs="?",
-        default=set_default_binding_path(
-            "WRIT_WITBINDGEN_PATH",
-            f"/tmp/writ-bind-cache-{pwd.getpwuid(os.getuid())[0]}/",
-        ),
+        default=f"/tmp/writ-bind-cache-{pwd.getpwuid(os.getuid())[0]}/",
         required=False,
         help="directory path to use for the binding cache",
     )

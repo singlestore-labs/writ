@@ -1,9 +1,5 @@
 FROM debian as builder
 
-# WORKDIR /writ
-
-# COPY . .
-
 RUN apt-get clean
 RUN apt-get update
 RUN apt-get install -y \
@@ -35,7 +31,6 @@ RUN cd /opt && curl -L https://github.com/WebAssembly/wasi-sdk/releases/download
 ENV WASMTIME_VERSION=0.33.0
 RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v${WASMTIME_VERSION}/wasmtime-v${WASMTIME_VERSION}-x86_64-linux.tar.xz \ 
     | tar -xJ --wildcards --no-anchored --strip-components 1 -C /usr/bin wasmtime
-
 
 COPY src/ /usr/bin/ 
 COPY test test/

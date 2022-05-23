@@ -135,7 +135,7 @@ Output:
 [{"idx": "0"}]
 ```
 
-## Run using Docker
+## Building and Running the Docker Image
 You will need to install [Docker](https://docs.docker.com/engine/install/).
 
 Set up (make sure you are at the directory containing `Dockerfile`:

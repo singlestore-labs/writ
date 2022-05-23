@@ -14,7 +14,10 @@ class ErrorCode(Enum):
     PATH_NOT_EXECUTABLE = "The following path is not executable: "
 
 
-def check_command(command: str) -> str:
+def check_command(env_name: str, command: str) -> str:
+    ENV_CMD = os.environ.get(env_name)
+    if ENV_CMD is not None:
+        return ENV_CMD
     path = shutil.which(command)
     if path is None:
         error_handler.return_error(COMMAND_DOES_NOT_EXIST.value)
