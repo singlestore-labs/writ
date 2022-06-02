@@ -1,0 +1,195 @@
+#!/usr/bin/env python3
+
+from enum import Enum
+from typing import Optional
+import argparse
+import collections
+import error_handler
+import filecmp
+import importlib
+import inspect
+import json_utils
+import operator
+import os
+import parse_input
+import re
+import shutil
+import string
+import subprocess
+import sys
+import typing
+import validate
+import wasmtime
+
+
+class ErrorCode(Enum):
+    INITIALIZE_MODULE_FAILED = "Failed to initialize wasm module."
+    INVOKE_INITIALIZE_FAILED = "Failed to invoke _initialize."
+    MISSING_INPUT = (
+        "Either wasm file path or function name is missing from the input arguments."
+    )
+    OBJECT_NOT_FOUND = "No object found in target: "
+    PATH_NOT_EXIST = "File path doesn't exist: "
+    TYPE_NOT_IMPLEMENTED = "Type not implemented: "
+    UNKNOWN = "Unknown error, likely caused by wrong/missing arguments."
+
+
+class Imports:
+    wit_name: Optional[str]
+    wasm_file: str
+    func: str
+    args: [str]
+    classes: dict
+
+    def __init__(self) -> None:
+        (binding_path, wit_path, input_args) = parse_input.parse()
+        if len(input_args) < 2:
+            error_handler.return_error(ErrorCode.MISSING_INPUT.value)
+
+        self.wasm_file = input_args[0]
+        self.func = input_args[1]
+        self.args = [
+            json_utils.check_and_load(input_args, index)
+            for index in range(2, len(input_args))
+        ]
+
+        if wit_path is None:
+            self.wit_name = None
+        else:
+            self.wit_name = re.findall(r"[^\/]+(?=\.)", wit_path)[-1]
+
+            # generate bindings
+            export_name = f"{self.wit_name}_export_bindings"
+            import_name = f"{self.wit_name}_import_bindings"
+            export_path = f"{binding_path}{export_name}.py"
+            import_path = f"{binding_path}{import_name}.py"
+            wit_cached_path = f"{binding_path}{self.wit_name}.wit"
+
+            WIT_BINDGEN_PATH = validate.check_command(
+                "WRIT_WITBINDGEN_PATH", "wit-bindgen"
+            )
+
+            validate.check_cached_file_or_generate(
+                WIT_BINDGEN_PATH,
+                wit_path,
+                wit_cached_path,
+                export_path,
+                import_path,
+            )
+
+            sys.path.insert(1, binding_path)
+            self.imported = importlib.import_module(import_name)
+            self.exported = importlib.import_module(export_name)
+
+    def get_types(self, class_name: str) -> list[typing.types]:
+        py_import_classes = inspect.getmembers(
+            self.imported,
+            lambda x: inspect.isclass(x) and x.__name__ == class_name,
+        )
+        py_import_class = error_handler.assert_and_return(
+            not py_import_classes,
+            ErrorCode.OBJECT_NOT_FOUND.value + "class " + class_name,
+            py_import_classes[0][1],
+        )
+        py_funcs = inspect.getmembers(
+            py_import_class,
+            lambda x: inspect.isfunction(x) and x.__name__ == self.func,
+        )
+        py_func = error_handler.assert_and_return(
+            not py_funcs,
+            ErrorCode.OBJECT_NOT_FOUND.value + "function " + self.func,
+            py_funcs[0][1],
+        )
+
+        signatures = inspect.signature(py_func)
+        return list(
+            map(
+                lambda x: signatures.parameters[x].annotation,
+                signatures.parameters.keys(),
+            )
+        )
+
+    def run_without_wit_arg(self) -> Optional[str]:
+        WASMTIME_CMD = validate.check_command("WRIT_WASMTIME_PATH", "wasmtime")
+        command = [WASMTIME_CMD, "run", "--invoke", self.func, self.wasm_file] + [
+            str(x) for x in self.args
+        ]
+        try:
+            result = subprocess.run(command, capture_output=True)
+            return result.stdout.decode("utf-8").rstrip()
+        except:
+            return None  # error handling here
+
+    def run_with_wit_arg(
+        self, linker: wasmtime.Linker, store: wasmtime.Store, module: wasmtime.Module
+    ) -> Optional[str]:
+        linker_func_name = "add_" + self.wit_name + "_to_linker"
+        eval("self.exported." + linker_func_name + "(linker, store, self)")
+
+        self.func = self.func.replace("-", "_")
+
+        # process arguments
+        py_class_name = "".join(x.capitalize() for x in self.wit_name.split("_"))
+        type_list = self.get_types(py_class_name)
+
+        # evaluate
+        ccommand = "self.imported." + py_class_name + "(store, linker, module)"
+        wasm = eval(ccommand)
+
+        classes = dict(inspect.getmembers(self.imported, inspect.isclass))
+        parse_args_helper = json_utils.ParseJson(classes, self.imported)
+        command = (
+            "wasm."
+            + self.func
+            + "(store,"
+            + parse_args_helper.parse_json_args(list(zip(self.args, type_list[2:])))
+            + ")"
+        )
+
+        try:
+            result = eval(command)
+        except:
+            result = None
+        return result
+
+
+def run() -> Optional[str]:
+    # initialize
+    imports = Imports()
+
+    store = wasmtime.Store()
+    try:
+        module = wasmtime.Module.from_file(store.engine, imports.wasm_file)
+    except:
+        print(ErrorCode.INITIALIZE_MODULE_FAILED.value, file=sys.stderr)
+
+    linker = wasmtime.Linker(store.engine)
+    linker.define_wasi()
+    linker.define_module(store, "test", module)
+
+    wasi = wasmtime.WasiConfig()
+    wasi.inherit_stdout()
+    wasi.inherit_stderr()
+    store.set_wasi(wasi)
+
+    #  invoke _initialize export
+    try:
+        maybe_func = linker.get(store, "test", "_initialize")
+        maybe_func(store)
+    except:
+        print(ErrorCode.INVOKE_INITIALIZE_FAILED.value, file=sys.stderr)
+
+    if imports.wit_name == None:
+        result = imports.run_without_wit_arg()
+    else:
+        result = imports.run_with_wit_arg(linker, store, module)
+    return result
+
+
+if __name__ == "__main__":
+    result = run()
+    if result is None:
+        print(ErrorCode.UNKNOWN.value, file=sys.stderr)
+    else:
+        json_result = json_utils.check_and_dump(json_utils.to_py_str(result))
+        print(json_result)
