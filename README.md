@@ -7,7 +7,7 @@ When no WIT file is provided, the arguments will be interpreted as basic types t
 To facilitate expression of complex types, the tool will accept JSON notation as input and produce JSON notation as output.
 
 ## Prerequisites
-If you don't want to install these packages, there's an option to use Docker [below](## Building and Running the Docker Image)
+If you don't want to install these packages, there's an option to use Docker [below](#building-and-running-the-docker-image)
 1. Download and install [Wasmtime](https://wasmtime.dev/)
 
 2. Install [wasmtime-py](https://github.com/bytecodealliance/wasmtime-py)
