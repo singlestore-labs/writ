@@ -5,8 +5,8 @@ import pwd
 
 
 def check_binding_path(binding_path: str) -> str:
-    if binding_path[-1] != "/":
-        binding_path += "/"
+    if not os.path.abspath(binding_path).endswith(os.path.sep):
+        binding_path += os.path.sep
     if not os.path.isdir(binding_path):
         os.makedirs(binding_path)
     return binding_path
@@ -28,7 +28,9 @@ def parse():
         dest="binding_path",
         type=check_binding_path,
         nargs="?",
-        default=f"/tmp/writ-bind-cache-{pwd.getpwuid(os.getuid())[0]}/",
+        default=os.path.join(
+            os.path.sep, "tmp", f"writ-bind-cache-{pwd.getpwuid(os.getuid())[0]}"
+        ),
         required=False,
         help="directory path to use for the binding cache",
     )
