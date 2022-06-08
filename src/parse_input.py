@@ -5,8 +5,7 @@ import pwd
 
 
 def check_binding_path(binding_path: str) -> str:
-    if not os.path.abspath(binding_path).endswith(os.path.sep):
-        binding_path += os.path.sep
+    binding_path = os.path.abspath(binding_path)
     if not os.path.isdir(binding_path):
         os.makedirs(binding_path)
     return binding_path
@@ -15,7 +14,7 @@ def check_binding_path(binding_path: str) -> str:
 def valid_path(arg_path: str):
     """custom argparse *path file* type for user path values given from the command line"""
     if os.path.exists(arg_path):
-        return arg_path
+        return os.path.abspath(arg_path)
     else:
         raise argparse.ArgumentTypeError(f"{arg_path} does not exist!")
 

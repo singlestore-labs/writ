@@ -61,9 +61,9 @@ class Imports:
             # generate bindings
             export_name = f"{self.wit_name}_export_bindings"
             import_name = f"{self.wit_name}_import_bindings"
-            export_path = f"{binding_path}{export_name}.py"
-            import_path = f"{binding_path}{import_name}.py"
-            wit_cached_path = f"{binding_path}{self.wit_name}.wit"
+            export_path = os.path.join(binding_path, f"{export_name}.py")
+            import_path = os.path.join(binding_path, f"{import_name}.py")
+            wit_cached_path = os.path.join(binding_path, f"{self.wit_name}.wit")
 
             WIT_BINDGEN_PATH = validate.check_command(
                 "WRIT_WITBINDGEN_PATH", "wit-bindgen"
@@ -124,7 +124,8 @@ class Imports:
         self, linker: wasmtime.Linker, store: wasmtime.Store, module: wasmtime.Module
     ) -> Optional[str]:
         linker_func_name = "add_" + self.wit_name + "_to_linker"
-        eval("self.exported." + linker_func_name + "(linker, store, self)")
+        linker_func = getattr(self.exported, linker_func_name)
+        linker_func(linker, store, self)
 
         self.func = self.func.replace("-", "_")
 
@@ -132,24 +133,19 @@ class Imports:
         py_class_name = "".join(x.capitalize() for x in self.wit_name.split("_"))
         type_list = self.get_types(py_class_name)
 
-        # evaluate
-        ccommand = "self.imported." + py_class_name + "(store, linker, module)"
-        wasm = eval(ccommand)
+        # call the class in self_imported files that has the same name as the py_class on necessary parameters
+        wasm = getattr(self.imported, py_class_name)(store, linker, module)
 
         classes = dict(inspect.getmembers(self.imported, inspect.isclass))
         parse_args_helper = json_utils.ParseJson(classes, self.imported)
-        command = (
-            "wasm."
-            + self.func
-            + "(store,"
-            + parse_args_helper.parse_json_args(list(zip(self.args, type_list[2:])))
-            + ")"
-        )
 
         try:
-            result = eval(command)
+            args = parse_args_helper.parse_json_args(
+                list(zip(self.args, type_list[2:]))
+            )
+            result = getattr(wasm, self.func)(store, *args)
         except:
-            result = None
+            return None
         return result
 
 
@@ -179,11 +175,9 @@ def run() -> Optional[str]:
     except:
         print(ErrorCode.INVOKE_INITIALIZE_FAILED.value, file=sys.stderr)
 
-    if imports.wit_name == None:
-        result = imports.run_without_wit_arg()
-    else:
-        result = imports.run_with_wit_arg(linker, store, module)
-    return result
+    if imports.wit_name is not None:
+        return imports.run_with_wit_arg(linker, store, module)
+    return imports.run_without_wit_arg()
 
 
 if __name__ == "__main__":

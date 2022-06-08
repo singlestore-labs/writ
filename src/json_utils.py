@@ -80,21 +80,12 @@ class ParseJson:
         class_name = arg_type.__name__
         class_obj = self.classes[class_name]
         class_types = list(class_obj.__annotations__.values())
-        command = (
-            "self.imported."
-            + class_name
-            + "("
-            + ",".join(
-                map(
-                    lambda x: self.process_arg(x),
-                    zip(list(arg_value.values()), class_types),
-                )
-            )
-            + ")"
-        )
-        return command
+        class_args = [
+            self.process_arg(x) for x in zip(list(arg_value.values()), class_types)
+        ]
+        return getattr(self.imported, class_name)(*class_args)
 
-    def process_arg(self, arg: (typing.Any, typing.types)) -> str:
+    def process_arg(self, arg: (typing.Any, typing.types)) -> typing.Any:
         arg_value, arg_type = arg[0], arg[1]
         if is_atomic_type(arg_value):
             if type(arg_value) is not arg_type:
@@ -102,24 +93,20 @@ class ParseJson:
                     ErrorCode.TYPE_MISMATCH.value
                     + "{} and {}".format(type(arg_value), arg_type)
                 )
-            return to_string_arg(arg_value)
+            return arg_value
         elif arg_type is bytes:
             # if arg type is bytes, arg value type is assumed to be in form of
             # array of integer [a_1, a_2, ..., a_n], a_i represent each bit i-th
-            return str(b"".join([x.to_bytes(1, "big") for x in arg_value]))
+            return b"".join([x.to_bytes(1, "big") for x in arg_value])
         elif isinstance(arg_value, dict):
             return self.process_dict_arg(arg_value, arg_type)
         elif isinstance(arg_value, list):
             arg_elem_type = arg_type.__args__[0]  # type of each element in the list
-            return (
-                "["
-                + ",".join([self.process_arg((x, arg_elem_type)) for x in arg_value])
-                + "]"
-            )
+            return [self.process_arg((x, arg_elem_type)) for x in arg_value]
         else:
             error_handler.return_error(
                 ErrorCode.ARG_TYPE_NOT_IMPLEMENTED.value + str(type(arg_value))
             )
 
     def parse_json_args(self, args: list[(str, typing.types)]) -> str:
-        return ",".join(map(lambda x: self.process_arg(x), args))
+        return [self.process_arg(x) for x in args]

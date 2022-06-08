@@ -17,10 +17,9 @@ If you don't want to install these packages, there's an option to use Docker [be
 4. Download and install the [WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-14)
 
 ## Installation
-Clone this repository:
+This package can be install from PyPI using pip:
 ```sh
-git clone https://github.com/singlestore-labs/writ.git
-cd writ
+pip install writ
 ```
 
 ## Usage
