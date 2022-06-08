@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import pwd
+import tempfile
 
 
 def check_binding_path(binding_path: str) -> str:
@@ -28,7 +29,7 @@ def parse():
         type=check_binding_path,
         nargs="?",
         default=os.path.join(
-            os.path.sep, "tmp", f"writ-bind-cache-{pwd.getpwuid(os.getuid())[0]}"
+            tempfile.gettempdir(), f"writ-bind-cache-{pwd.getpwuid(os.getuid())[0]}"
         ),
         required=False,
         help="directory path to use for the binding cache",
