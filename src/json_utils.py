@@ -1,7 +1,7 @@
 from enum import Enum
 import error_handler
 import json
-import sys
+import string
 import typing
 
 
@@ -10,11 +10,14 @@ class ErrorCode(Enum):
     DUMP_JSON_FAILED = "Failed to convert the following python str to json output: "
     LOAD_JSON_FAILED = "Failed to load json args at index: "
     TYPE_MISMATCH = "Type mismatch between type of arg_value and arg_type: "
+    TYPE_TO_STRING_NOT_IMPLEMENTED = (
+        "Following type is not implemented to convert to string: "
+    )
     PYOBJ_TO_PYSTR_FAILED = "Following Python type to Python str is not implemented: "
     UNKNOWN = "Unknown error in parsing json."
 
 
-def check_and_load(json_args: [str], index: int) -> str:
+def check_and_load(json_args: str, index: int) -> str:
     try:
         loaded_json = json.loads(json_args[index])
     except:
@@ -30,42 +33,27 @@ def check_and_dump(py_str: str) -> str:
     return json_str
 
 
-def to_py_str(pyobj: str) -> str:
+def to_py_obj(pyobj: str) -> typing.Any:
     if hasattr(pyobj, "__dict__"):
-        return {k: to_py_str(v) for k, v in pyobj.__dict__.items()}
+        return {k: to_py_obj(v) for k, v in pyobj.__dict__.items()}
     elif isinstance(pyobj, list) or isinstance(pyobj, tuple):
-        return [to_py_str(x) for x in pyobj]
+        return [to_py_obj(x) for x in pyobj]
     elif isinstance(pyobj, str):
         return pyobj
     elif isinstance(pyobj, int) or isinstance(pyobj, float):
         return pyobj
     elif isinstance(pyobj, bool):
         return pyobj.lower()
-    else:
-        error_handler.return_error(PYOBJ_TO_PYSTR_FAILED.value + type(pyobj))
+    error_handler.return_error(ErrorCode.PYOBJ_TO_PYSTR_FAILED.value + type(pyobj))
 
 
-def is_atomic_type(arg: typing.Any):
+def is_atomic_type(arg: typing.Any) -> bool:
     return (
         isinstance(arg, int)
         or isinstance(arg, float)
         or isinstance(arg, str)
         or isinstance(arg, bool)
     )
-
-
-# convert to string, atomic type only
-def to_string_arg(arg: typing.Any) -> str:
-    if isinstance(arg, int) or isinstance(arg, float):
-        return str(arg)
-    elif isinstance(arg, str):
-        return '"' + arg + '"'
-    elif isinstance(arg, bool):
-        return string.capwords(arg)
-    else:
-        error_handler.return_error(
-            ErrorCode.TYPE_TO_STRING_NOT_IMPLEMENTED.value + str(type(arg))
-        )
 
 
 class ParseJson:
@@ -76,7 +64,7 @@ class ParseJson:
         self.imported = imported
 
     # convert class (presented by a json dictionary) to string
-    def process_dict_arg(self, arg_value: dict, arg_type: typing.types) -> str:
+    def process_dict_arg(self, arg_value: dict, arg_type: type) -> str:
         class_name = arg_type.__name__
         class_obj = self.classes[class_name]
         class_types = list(class_obj.__annotations__.values())
@@ -85,7 +73,7 @@ class ParseJson:
         ]
         return getattr(self.imported, class_name)(*class_args)
 
-    def process_arg(self, arg: (typing.Any, typing.types)) -> typing.Any:
+    def process_arg(self, arg: tuple[typing.Any, typing.Any]) -> typing.Any:
         arg_value, arg_type = arg[0], arg[1]
         if is_atomic_type(arg_value):
             if type(arg_value) is not arg_type:
@@ -108,5 +96,5 @@ class ParseJson:
                 ErrorCode.ARG_TYPE_NOT_IMPLEMENTED.value + str(type(arg_value))
             )
 
-    def parse_json_args(self, args: list[(str, typing.types)]) -> str:
+    def parse_json_args(self, args: list[tuple[typing.Any, type]]) -> list[typing.Any]:
         return [self.process_arg(x) for x in args]

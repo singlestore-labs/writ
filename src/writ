@@ -2,19 +2,13 @@
 
 from enum import Enum
 from typing import Optional
-import argparse
-import collections
 import error_handler
-import filecmp
 import importlib
 import inspect
 import json_utils
-import operator
 import os
 import parse_input
 import re
-import shutil
-import string
 import subprocess
 import sys
 import typing
@@ -38,7 +32,7 @@ class Imports:
     wit_name: Optional[str]
     wasm_file: str
     func: str
-    args: [str]
+    args: list[str]
     classes: dict
 
     def __init__(self) -> None:
@@ -81,7 +75,7 @@ class Imports:
             self.imported = importlib.import_module(import_name)
             self.exported = importlib.import_module(export_name)
 
-    def get_types(self, class_name: str) -> list[typing.types]:
+    def get_types(self, class_name: str) -> list[typing.Any]:
         py_import_classes = inspect.getmembers(
             self.imported,
             lambda x: inspect.isclass(x) and x.__name__ == class_name,
@@ -102,18 +96,19 @@ class Imports:
         )
 
         signatures = inspect.signature(py_func)
-        return list(
-            map(
-                lambda x: signatures.parameters[x].annotation,
-                signatures.parameters.keys(),
-            )
-        )
+        return [
+            signatures.parameters[x].annotation for x in signatures.parameters.keys()
+        ]
 
     def run_without_wit_arg(self) -> Optional[str]:
         WASMTIME_CMD = validate.check_command("WRIT_WASMTIME_PATH", "wasmtime")
-        command = [WASMTIME_CMD, "run", "--invoke", self.func, self.wasm_file] + [
-            str(x) for x in self.args
-        ]
+        command = [
+            validate.resolve_string(WASMTIME_CMD),
+            "run",
+            "--invoke",
+            self.func,
+            self.wasm_file,
+        ] + [str(x) for x in self.args]
         try:
             result = subprocess.run(command, capture_output=True)
             return result.stdout.decode("utf-8").rstrip()
@@ -123,14 +118,15 @@ class Imports:
     def run_with_wit_arg(
         self, linker: wasmtime.Linker, store: wasmtime.Store, module: wasmtime.Module
     ) -> Optional[str]:
-        linker_func_name = "add_" + self.wit_name + "_to_linker"
+        resolved_wit_name = validate.resolve_string(self.wit_name)
+        linker_func_name = "add_" + resolved_wit_name + "_to_linker"
         linker_func = getattr(self.exported, linker_func_name)
         linker_func(linker, store, self)
 
         self.func = self.func.replace("-", "_")
 
         # process arguments
-        py_class_name = "".join(x.capitalize() for x in self.wit_name.split("_"))
+        py_class_name = "".join(x.capitalize() for x in resolved_wit_name.split("_"))
         type_list = self.get_types(py_class_name)
 
         # call the class in self_imported files that has the same name as the py_class on necessary parameters
@@ -156,28 +152,28 @@ def run() -> Optional[str]:
     store = wasmtime.Store()
     try:
         module = wasmtime.Module.from_file(store.engine, imports.wasm_file)
+
+        linker = wasmtime.Linker(store.engine)
+        linker.define_wasi()
+        linker.define_module(store, "test", module)
+
+        wasi = wasmtime.WasiConfig()
+        wasi.inherit_stdout()
+        wasi.inherit_stderr()
+        store.set_wasi(wasi)
+
+        #  invoke _initialize export
+        try:
+            maybe_func = linker.get(store, "test", "_initialize")
+            maybe_func(store)
+        except:
+            print(ErrorCode.INVOKE_INITIALIZE_FAILED.value, file=sys.stderr)
+
+        if imports.wit_name is not None:
+            return imports.run_with_wit_arg(linker, store, module)
+        return imports.run_without_wit_arg()
     except:
         print(ErrorCode.INITIALIZE_MODULE_FAILED.value, file=sys.stderr)
-
-    linker = wasmtime.Linker(store.engine)
-    linker.define_wasi()
-    linker.define_module(store, "test", module)
-
-    wasi = wasmtime.WasiConfig()
-    wasi.inherit_stdout()
-    wasi.inherit_stderr()
-    store.set_wasi(wasi)
-
-    #  invoke _initialize export
-    try:
-        maybe_func = linker.get(store, "test", "_initialize")
-        maybe_func(store)
-    except:
-        print(ErrorCode.INVOKE_INITIALIZE_FAILED.value, file=sys.stderr)
-
-    if imports.wit_name is not None:
-        return imports.run_with_wit_arg(linker, store, module)
-    return imports.run_without_wit_arg()
 
 
 if __name__ == "__main__":
@@ -185,5 +181,5 @@ if __name__ == "__main__":
     if result is None:
         print(ErrorCode.UNKNOWN.value, file=sys.stderr)
     else:
-        json_result = json_utils.check_and_dump(json_utils.to_py_str(result))
+        json_result = json_utils.check_and_dump(json_utils.to_py_obj(result))
         print(json_result)

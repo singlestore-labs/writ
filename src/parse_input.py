@@ -1,5 +1,4 @@
 import argparse
-import json
 import os
 import pwd
 import tempfile
@@ -20,7 +19,7 @@ def valid_path(arg_path: str):
         raise argparse.ArgumentTypeError(f"{arg_path} does not exist!")
 
 
-def parse():
+def parse() -> tuple[str, str, str]:
     parser = argparse.ArgumentParser(description="WASI Reactor Interface Tester")
     parser.add_argument(
         "-b",
