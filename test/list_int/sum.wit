@@ -1,1 +1,0 @@
-sum: function(a: list<s32>) -> s32

@@ -1,27 +1,16 @@
-from enum import Enum
 import error_handler
 import json
-import string
 import typing
-
-
-class ErrorCode(Enum):
-    ARG_TYPE_NOT_IMPLEMENTED = "Arg type not implemented: "
-    DUMP_JSON_FAILED = "Failed to convert the following python str to json output: "
-    LOAD_JSON_FAILED = "Failed to load json args at index: "
-    TYPE_MISMATCH = "Type mismatch between type of arg_value and arg_type: "
-    TYPE_TO_STRING_NOT_IMPLEMENTED = (
-        "Following type is not implemented to convert to string: "
-    )
-    PYOBJ_TO_PYSTR_FAILED = "Following Python type to Python str is not implemented: "
-    UNKNOWN = "Unknown error in parsing json."
 
 
 def check_and_load(json_args: str, index: int) -> str:
     try:
         loaded_json = json.loads(json_args[index])
     except:
-        error_handler.return_error(ErrorCode.LOAD_JSON_FAILED.value + str(index - 1))
+        raise error_handler.Error(
+            error_handler.ErrorCode.LOAD_JSON_FAILED,
+            f"Failed to load json object at index {str(index - 1)}.",
+        )
     return loaded_json
 
 
@@ -29,7 +18,10 @@ def check_and_dump(py_str: str) -> str:
     try:
         json_str = json.dumps(py_str)
     except:
-        error_handler.return_error(ErrorCode.DUMP_JSON_FAILED.value + py_str)
+        raise error_handler.Error(
+            error_handler.ErrorCode.DUMP_JSON_FAILED,
+            f"Failed to convert python str: {py_str} to json output failed.",
+        )
     return json_str
 
 
@@ -44,7 +36,10 @@ def to_py_obj(pyobj: str) -> typing.Any:
         return pyobj
     elif isinstance(pyobj, bool):
         return pyobj.lower()
-    error_handler.return_error(ErrorCode.PYOBJ_TO_PYSTR_FAILED.value + type(pyobj))
+    raise error_handler.Error(
+        error_handler.ErrorCode.PYOBJ_TO_PYSTR_FAILED,
+        f"Convert following Python type: {type(pyobj)} to Python str is not implemented",
+    )
 
 
 def is_atomic_type(arg: typing.Any) -> bool:
@@ -77,9 +72,9 @@ class ParseJson:
         arg_value, arg_type = arg[0], arg[1]
         if is_atomic_type(arg_value):
             if type(arg_value) is not arg_type:
-                error_handler.return_error(
-                    ErrorCode.TYPE_MISMATCH.value
-                    + "{} and {}".format(type(arg_value), arg_type)
+                raise error_handler.Error(
+                    error_handler.ErrorCode.TYPE_MISMATCH,
+                    f"Type mismatch between {arg_value} and {arg_type}",
                 )
             return arg_value
         elif arg_type is bytes:
@@ -92,8 +87,9 @@ class ParseJson:
             arg_elem_type = arg_type.__args__[0]  # type of each element in the list
             return [self.process_arg((x, arg_elem_type)) for x in arg_value]
         else:
-            error_handler.return_error(
-                ErrorCode.ARG_TYPE_NOT_IMPLEMENTED.value + str(type(arg_value))
+            raise error_handler.Error(
+                error_handler.ErrorCode.ARG_TYPE_NOT_IMPLEMENTED,
+                f"Parsing json for the type: {str(type(arg_value))} is not implemented.",
             )
 
     def parse_json_args(self, args: list[tuple[typing.Any, type]]) -> list[typing.Any]:

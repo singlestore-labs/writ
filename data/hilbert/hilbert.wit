@@ -1,0 +1,15 @@
+record hilbert-input {
+  vec: list<u8>,
+  min-value: float64,
+  max-value: float64,
+  scale: float64,
+}
+record hilbert-output {
+  idx: string,
+}
+hilbert-encode: func(input: hilbert-input, ) -> list<hilbert-output>
+
+wit-source-get: func() -> string
+
+wit-source-print: func()
+

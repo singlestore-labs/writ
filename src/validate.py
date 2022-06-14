@@ -19,7 +19,9 @@ class ErrorCode(Enum):
 
 def resolve_string(s: typing.Optional[str]) -> str:
     if s is None:
-        error_handler.return_error(ErrorCode.EMPTY_STRING.value)
+        raise error_handler.Error(
+            error_handler.ErrorCode.EMPTY_STRING, "Empty string or string not found."
+        )
     return str(s)
 
 
@@ -29,9 +31,15 @@ def check_command(env_name: str, command: str) -> typing.Optional[str]:
         return ENV_CMD
     path = shutil.which(command)
     if path is None:
-        error_handler.return_error(ErrorCode.VARIABLE_DOES_NOT_EXIST.value)
+        error_handler.Error(
+            error_handler.ErrorCode.VARIABLE_NOT_IN_PATH,
+            f"{command} does not exist in path.",
+        )
     if not os.access(os.path.abspath(validate.resolve_string(path)), os.X_OK):
-        error_handler.return_error(ErrorCode.PATH_NOT_EXECUTABLE.value)
+        error_handler.Error(
+            error_handler.ErrorCode.PATH_NOT_EXECUTABLE,
+            f"The following path is not executable: {path}",
+        )
     return path
 
 

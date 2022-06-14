@@ -1,0 +1,12 @@
+record polarity-scores {
+  compound: float64,
+  positive: float64,
+  negative: float64,
+  neutral: float64,
+}
+sentiment: func(input: string, ) -> polarity-scores
+
+wit-source-get: func() -> string
+
+wit-source-print: func()
+
