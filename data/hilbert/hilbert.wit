@@ -7,9 +7,9 @@ record hilbert-input {
 record hilbert-output {
   idx: string,
 }
-hilbert-encode: function(input: hilbert-input, ) -> list<hilbert-output>
+hilbert-encode: func(input: hilbert-input, ) -> list<hilbert-output>
 
-wit-source-get: function() -> string
+wit-source-get: func() -> string
 
-wit-source-print: function()
+wit-source-print: func()
 

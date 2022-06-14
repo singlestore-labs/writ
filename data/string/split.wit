@@ -1,0 +1,5 @@
+record subphrase {
+  str: string,
+  idx: s32
+}
+split-str: func(phrase: string, delim: string) -> list<subphrase>

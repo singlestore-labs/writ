@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from enum import Enum
 from typing import Optional
 import error_handler
 import importlib
@@ -16,18 +15,6 @@ import validate
 import wasmtime
 
 
-class ErrorCode(Enum):
-    INITIALIZE_MODULE_FAILED = "Failed to initialize wasm module."
-    INVOKE_INITIALIZE_FAILED = "Failed to invoke _initialize."
-    MISSING_INPUT = (
-        "Either wasm file path or function name is missing from the input arguments."
-    )
-    OBJECT_NOT_FOUND = "No object found in target: "
-    PATH_NOT_EXIST = "File path doesn't exist: "
-    TYPE_NOT_IMPLEMENTED = "Type not implemented: "
-    UNKNOWN = "Unknown error, likely caused by wrong/missing arguments."
-
-
 class Imports:
     wit_name: Optional[str]
     wasm_file: str
@@ -38,8 +25,10 @@ class Imports:
     def __init__(self) -> None:
         (binding_path, wit_path, input_args) = parse_input.parse()
         if len(input_args) < 2:
-            error_handler.return_error(ErrorCode.MISSING_INPUT.value)
-
+            raise error_handler.Error(
+                error_handler.ErrorCode.MISSING_INPUT,
+                "Missing either wasm file path or function name.",
+            )
         self.wasm_file = input_args[0]
         self.func = input_args[1]
         self.args = [
@@ -80,21 +69,22 @@ class Imports:
             self.imported,
             lambda x: inspect.isclass(x) and x.__name__ == class_name,
         )
-        py_import_class = error_handler.assert_and_return(
-            not py_import_classes,
-            ErrorCode.OBJECT_NOT_FOUND.value + "class " + class_name,
-            py_import_classes[0][1],
-        )
+        if not py_import_classes:
+            raise error_handler.Error(
+                error_handler.ErrorCode.OBJECT_NOT_FOUND,
+                f"Class {class_name} is not found in {self.imported}.",
+            )
+        py_import_class = py_import_classes[0][1]
         py_funcs = inspect.getmembers(
             py_import_class,
             lambda x: inspect.isfunction(x) and x.__name__ == self.func,
         )
-        py_func = error_handler.assert_and_return(
-            not py_funcs,
-            ErrorCode.OBJECT_NOT_FOUND.value + "function " + self.func,
-            py_funcs[0][1],
-        )
-
+        if not py_funcs:
+            raise error_handler.Error(
+                error_handler.ErrorCode.OBJECT_NOT_FOUND,
+                f"Function {self.func} is not found in {py_import_class}.",
+            )
+        py_func = py_funcs[0][1]
         signatures = inspect.signature(py_func)
         return [
             signatures.parameters[x].annotation for x in signatures.parameters.keys()
@@ -167,19 +157,24 @@ def run() -> Optional[str]:
             maybe_func = linker.get(store, "test", "_initialize")
             maybe_func(store)
         except:
-            print(ErrorCode.INVOKE_INITIALIZE_FAILED.value, file=sys.stderr)
+            print("Failed to invoke _initialize.", file=sys.stderr)
 
         if imports.wit_name is not None:
             return imports.run_with_wit_arg(linker, store, module)
         return imports.run_without_wit_arg()
     except:
-        print(ErrorCode.INITIALIZE_MODULE_FAILED.value, file=sys.stderr)
+        raise error_handler.Error(
+            error_handler.ErrorCode.INITIALIZE_MODULE_FAILED,
+            "Failed to invoke wasm module.",
+        )
 
 
 if __name__ == "__main__":
     result = run()
     if result is None:
-        print(ErrorCode.UNKNOWN.value, file=sys.stderr)
+        raise error_handler.Error(
+            error_handler.ErrorCode.UNKNOWN, "Program failed to run for unknown reason."
+        )
     else:
         json_result = json_utils.check_and_dump(json_utils.to_py_obj(result))
         print(json_result)
