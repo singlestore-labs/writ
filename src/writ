@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-
 from typing import Optional
+import contextlib
 import error_handler
 import importlib
 import inspect
@@ -23,7 +23,7 @@ class Imports:
     classes: dict
 
     def __init__(self) -> None:
-        (binding_path, wit_path, input_args) = parse_input.parse()
+        (binding_path, wit_path, is_verbose, input_args) = parse_input.parse()
         if len(input_args) < 2:
             raise error_handler.Error(
                 error_handler.ErrorCode.MISSING_INPUT,
@@ -35,6 +35,7 @@ class Imports:
             json_utils.check_and_load(input_args, index)
             for index in range(2, len(input_args))
         ]
+        self.is_verbose = is_verbose
 
         if wit_path is None:
             self.wit_name = None
@@ -58,6 +59,7 @@ class Imports:
                 wit_cached_path,
                 export_path,
                 import_path,
+                is_verbose,
             )
 
             sys.path.insert(1, binding_path)
@@ -82,7 +84,7 @@ class Imports:
         if not py_funcs:
             raise error_handler.Error(
                 error_handler.ErrorCode.OBJECT_NOT_FOUND,
-                f"Function {self.func} is not found in {py_import_class}.",
+                f"Function {self.func} is not found in {py_import_class}. Check if your function name is correct or if you have included it.",
             )
         py_func = py_funcs[0][1]
         signatures = inspect.signature(py_func)
@@ -90,7 +92,7 @@ class Imports:
             signatures.parameters[x].annotation for x in signatures.parameters.keys()
         ]
 
-    def run_without_wit_arg(self) -> Optional[str]:
+    def run_without_wit_arg(self) -> str:
         WASMTIME_CMD = validate.check_command("WRIT_WASMTIME_PATH", "wasmtime")
         command = [
             validate.resolve_string(WASMTIME_CMD),
@@ -98,18 +100,23 @@ class Imports:
             "--invoke",
             self.func,
             self.wasm_file,
+            self.is_verbose,
         ] + [str(x) for x in self.args]
         try:
             result = subprocess.run(command, capture_output=True)
-            return result.stdout.decode("utf-8").rstrip()
+            return result.stdout.decode("utf-8").strip()
         except:
-            return None  # error handling here
+            raise error_handler.Error(
+                error_handler.ErrorCode.UNKNOWN,
+                "Unknown error when running the command, likely caused by wrong/unmatched wit specification",
+            )
 
     def run_with_wit_arg(
         self, linker: wasmtime.Linker, store: wasmtime.Store, module: wasmtime.Module
-    ) -> Optional[str]:
+    ) -> str:
         resolved_wit_name = validate.resolve_string(self.wit_name)
         linker_func_name = "add_" + resolved_wit_name + "_to_linker"
+
         linker_func = getattr(self.exported, linker_func_name)
         linker_func(linker, store, self)
 
@@ -120,6 +127,7 @@ class Imports:
         type_list = self.get_types(py_class_name)
 
         # call the class in self_imported files that has the same name as the py_class on necessary parameters
+
         wasm = getattr(self.imported, py_class_name)(store, linker, module)
 
         classes = dict(inspect.getmembers(self.imported, inspect.isclass))
@@ -131,22 +139,23 @@ class Imports:
             )
             result = getattr(wasm, self.func)(store, *args)
         except:
-            return None
-        return result
+            raise error_handler.Error(
+                error_handler.ErrorCode.UNKNOWN,
+                "Unknown error when running the command.",
+            )
+        return json_utils.check_and_dump(json_utils.to_py_obj(result))
 
 
 def run() -> Optional[str]:
     # initialize
     imports = Imports()
-
     store = wasmtime.Store()
+
     try:
         module = wasmtime.Module.from_file(store.engine, imports.wasm_file)
-
         linker = wasmtime.Linker(store.engine)
         linker.define_wasi()
         linker.define_module(store, "test", module)
-
         wasi = wasmtime.WasiConfig()
         wasi.inherit_stdout()
         wasi.inherit_stderr()
@@ -157,7 +166,8 @@ def run() -> Optional[str]:
             maybe_func = linker.get(store, "test", "_initialize")
             maybe_func(store)
         except:
-            print("Failed to invoke _initialize.", file=sys.stderr)
+            if imports.is_verbose:
+                print("Failed to invoke _initialize.", file=sys.stderr)
 
         if imports.wit_name is not None:
             return imports.run_with_wit_arg(linker, store, module)
@@ -170,11 +180,4 @@ def run() -> Optional[str]:
 
 
 if __name__ == "__main__":
-    result = run()
-    if result is None:
-        raise error_handler.Error(
-            error_handler.ErrorCode.UNKNOWN, "Program failed to run for unknown reason."
-        )
-    else:
-        json_result = json_utils.check_and_dump(json_utils.to_py_obj(result))
-        print(json_result)
+    print(run())

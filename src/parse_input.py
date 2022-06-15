@@ -19,7 +19,7 @@ def valid_path(arg_path: str):
         raise argparse.ArgumentTypeError(f"{arg_path} does not exist!")
 
 
-def parse() -> tuple[str, str, str]:
+def parse() -> tuple[str, str, bool, str]:
     parser = argparse.ArgumentParser(description="WASI Reactor Interface Tester")
     parser.add_argument(
         "-b",
@@ -44,9 +44,18 @@ def parse() -> tuple[str, str, str]:
         help="path to the WIT file",
     )
     parser.add_argument(
+        "-v",
+        "--verbose",
+        dest="is_verbose",
+        default=False,
+        required=False,
+        action="store_true",
+        help="enable debug output",
+    )
+    parser.add_argument(
         dest="input_args",
         nargs=argparse.REMAINDER,
         help="path to the Wasm module, function name, and arguments in JSON format",
     )
     args = parser.parse_args()
-    return args.binding_path, args.wit_path, args.input_args
+    return args.binding_path, args.wit_path, args.is_verbose, args.input_args

@@ -1,1 +1,1 @@
-power-of: func(base: s32, exp: s32) -> expected<s32, string>
+power-of: function(a: s32, b: s32) -> expected<s32, string>

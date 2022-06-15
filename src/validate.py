@@ -1,14 +1,14 @@
 """
 validate path, user input, etc
 """
+from enum import Enum
 import error_handler
 import filecmp
 import os
 import shutil
+import subprocess
 import typing
 import validate
-
-from enum import Enum
 
 
 class ErrorCode(Enum):
@@ -20,7 +20,7 @@ class ErrorCode(Enum):
 def resolve_string(s: typing.Optional[str]) -> str:
     if s is None:
         raise error_handler.Error(
-            error_handler.ErrorCode.EMPTY_STRING, "Empty string or string not found."
+            error_handler.ErrorCode.EMPTY_STRING, f"String {s} is empty or not found."
         )
     return str(s)
 
@@ -43,27 +43,46 @@ def check_command(env_name: str, command: str) -> typing.Optional[str]:
     return path
 
 
-def generate_and_move(gen_cmd, file_path):
-    os.system(gen_cmd)
-    shutil.move("bindings.py", file_path)
+def generate_and_move(command: list[str], file_path: str, is_verbose: bool):
+    try:
+        subprocess.run(command, capture_output=not is_verbose)
+        shutil.move("bindings.py", file_path)
+    except:
+        raise error_handler.Error(
+            error_handler.ErrorCode.UNKNOWN,
+            "Unknown error when running the command, likely caused by wrong/unmatched wit specification",
+        )
 
 
 def check_cached_file_or_generate(
     WIT_BINDGEN_PATH: typing.Optional[str],
     wit_path: str,
     cached_wit_path: str,
-    export_path,
-    import_path,
+    export_path: str,
+    import_path: str,
+    is_verbose: bool,
 ) -> None:
     if not os.path.exists(cached_wit_path) or not filecmp.cmp(
         cached_wit_path, wit_path, shallow=False
     ):
         generate_and_move(
-            f"{validate.resolve_string(WIT_BINDGEN_PATH)} wasmtime-py --export {wit_path}",
+            [
+                validate.resolve_string(WIT_BINDGEN_PATH),
+                "wasmtime-py",
+                "--export",
+                wit_path,
+            ],
             export_path,
+            is_verbose,
         )
         generate_and_move(
-            f"{validate.resolve_string(WIT_BINDGEN_PATH)} wasmtime-py --import {wit_path}",
+            [
+                validate.resolve_string(WIT_BINDGEN_PATH),
+                "wasmtime-py",
+                "--import",
+                wit_path,
+            ],
             import_path,
+            is_verbose,
         )
         shutil.copyfile(wit_path, cached_wit_path)
