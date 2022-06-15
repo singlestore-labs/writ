@@ -4,9 +4,9 @@ record polarity-scores {
   negative: float64,
   neutral: float64,
 }
-sentiment: function(input: string, ) -> polarity-scores
+sentiment: func(input: string, ) -> polarity-scores
 
-wit-source-get: function() -> string
+wit-source-get: func() -> string
 
-wit-source-print: function()
+wit-source-print: func()
 
