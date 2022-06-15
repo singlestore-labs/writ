@@ -24,20 +24,21 @@ pip install writ
 
 ## Usage
 ```console
-$ python3 writ.py --help
-usage: writ.py [-h] [-b [BINDING_PATH]] [-w [WIT_PATH]] ...
+$ python3 writ --help
+usage: writ [-h] [-b [BINDING_PATH]] [-w [WIT_PATH]] [-v] ...
 
 WASI Reactor Interface Tester
 
 positional arguments:
-  input_args            path to the wasm file, function name, input in json format
+  input_args            path to the Wasm module, function name, and arguments in JSON format
 
 optional arguments:
   -h, --help            show this help message and exit
   -b [BINDING_PATH], --bindings [BINDING_PATH]
-                        path to the binding folder
+                        directory path to use for the binding cache
   -w [WIT_PATH], --wit [WIT_PATH]
-                        path to the wit file
+                        path to the WIT file
+  -v, --verbose         enable debug output
 ```
 
 ## Examples 
