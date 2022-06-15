@@ -1,17 +1,27 @@
-import sys
-import typing
+from enum import Enum
 
 
-def return_error(err_message: str):
-    print("ERROR: " + err_message, file=sys.stderr)
-    sys.exit()
+class ErrorCode(Enum):
+    INITIALIZE_MODULE_FAILED = 1
+    INVOKE_INITIALIZE_FAILED = 2
+    MISSING_INPUT = 3
+    OBJECT_NOT_FOUND = 4
+    PATH_NOT_EXIST = 5
+    TYPE_NOT_IMPLEMENTED = 6
+    WRONG_ARGS = 7
+    ARG_TYPE_NOT_IMPLEMENTED = 8
+    DUMP_JSON_FAILED = 9
+    LOAD_JSON_FAILED = 10
+    TYPE_MISMATCH = 11
+    TYPE_TO_STRING_NOT_IMPLEMENTED = 12
+    PYOBJ_TO_PYSTR_FAILED = 13
+    UNKNOWN = 14
+    EMPTY_STRING = 15
+    VARIABLE_NOT_IN_PATH = 16
+    PATH_NOT_EXECUTABLE = 17
 
 
-def assert_and_return(
-    err_cond: bool, err_message: str, value: typing.Any
-) -> typing.Any:
-    if err_cond:
-        print("ERROR: " + err_message, file=sys.stderr)
-        sys.exit()
-    else:
-        return value
+class Error(Exception):
+    def __init__(self, code, msg):
+        self.code = code
+        self.msg = msg

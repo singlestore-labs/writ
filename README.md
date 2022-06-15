@@ -7,7 +7,7 @@ When no WIT file is provided, the arguments will be interpreted as basic types t
 To facilitate expression of complex types, the tool will accept JSON notation as input and produce JSON notation as output.
 
 ## Prerequisites
-If you don't want to install these packages, there's an option to use Docker [below](##Docker)
+If you don't want to install these packages, there's an option to use Docker [below](#building-and-running-the-docker-image)
 1. Download and install [Wasmtime](https://wasmtime.dev/)
 
 2. Install [wasmtime-py](https://github.com/bytecodealliance/wasmtime-py)
@@ -17,36 +17,36 @@ If you don't want to install these packages, there's an option to use Docker [be
 4. Download and install the [WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-14)
 
 ## Installation
-Clone this repository:
+This package can be install from PyPI using pip:
 ```sh
-git clone https://github.com/singlestore-labs/writ.git
-cd writ
+pip install writ
 ```
 
 ## Usage
 ```console
-$ python3 writ.py --help
-usage: writ.py [-h] [-b [BINDING_PATH]] [-w [WIT_PATH]] ...
+$ python3 writ --help
+usage: writ [-h] [-b [BINDING_PATH]] [-w [WIT_PATH]] [-v] ...
 
 WASI Reactor Interface Tester
 
 positional arguments:
-  input_args            path to the wasm file, function name, input in json format
+  input_args            path to the Wasm module, function name, and arguments in JSON format
 
 optional arguments:
   -h, --help            show this help message and exit
   -b [BINDING_PATH], --bindings [BINDING_PATH]
-                        path to the binding folder
+                        directory path to use for the binding cache
   -w [WIT_PATH], --wit [WIT_PATH]
-                        path to the wit file
+                        path to the WIT file
+  -v, --verbose         enable debug output
 ```
 
 ## Examples 
-There are a few examples in `/test` directory. First, we `cd src` into the directory containing the source code:
+There are a few examples in `/data` directory. First, we `cd src` into the directory containing the source code:
 1. `power` example: 
 ```sh
-./writ --wit ../test/int/power.wit ../test/int/power.wasm power-of 2 3
-./writ ../test/int/power.wasm power-of 2 3
+./writ --wit ../data/int/power.wit ../data/int/power.wasm power-of 2 3
+./writ ../data/int/power.wasm power-of 2 3
 ```
 Output:
 ```console
@@ -55,7 +55,7 @@ Output:
 
 2. `split string` example:
 ```sh
-./writ --wit ../test/string/split.wit ../test/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
+./writ --wit ../data/string/split.wit ../data/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
 ```
 Output:
 ```console
@@ -65,7 +65,7 @@ Output:
 3. Same `power` example, but for float type
 float:
 ```sh
-./writ --wit ../test/float/power.wit ../test/float/power.wasm power-of 2.0 3.0
+./writ --wit ../data/float/power.wit ../data/float/power.wasm power-of 2.0 3.0
 ```
 Output:
 ```console
@@ -73,7 +73,7 @@ Output:
 ```
 4. a machine learning model `sentiment analysis` example:
 ```
-./writ --wit ../test/sentiment/sentiment.wit  ../test/sentiment/sentiment.wasm sentiment '"have a nice day"'
+./writ --wit ../data/sentiment/sentiment.wit  ../data/sentiment/sentiment.wasm sentiment '"have a nice day"'
 ```
 Output:
 ```console
@@ -83,7 +83,7 @@ Output:
 5. `record` examples:
 * Construct a struct `bar` giving a `string name` and an `integer age`:
 ```sh
-./writ --wit ../test/record/record.wit ../test/record/record.wasm construct-bar '"meow"' 22
+./writ --wit ../data/record/record.wit ../data/record/record.wasm construct-bar '"meow"' 22
 ```
 Output:
 ```console
@@ -91,7 +91,7 @@ Output:
 ```
 * Apply a function on a given struct (`bar`)
 ```sh
- ./writ --wit ../test/record/record.wit ../test/record/record.wasm bar '{"name": "meow", "age": 22}'
+ ./writ --wit ../data/record/record.wit ../data/record/record.wasm bar '{"name": "meow", "age": 22}'
 ```
 Output:
 ```console
@@ -100,7 +100,7 @@ Output:
 
 * Construct a nested struct given an input
 ```sh
-./writ --wit ../test/record/record.wit ../test/record/record.wasm deeper-bar '{"name": "meow", "age": 22}'
+./writ --wit ../data/record/record.wit ../data/record/record.wasm deeper-bar '{"name": "meow", "age": 22}'
 ```
 Output:
 ```console
@@ -109,7 +109,7 @@ Output:
 
 * Apply a function on a nested struct
 ```sh
-./writ --wit ../test/record/record.wit ../test/record/record.wasm rev-deeper-bar '{"id": 2, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}'
+./writ --wit ../data/record/record.wit ../data/record/record.wasm rev-deeper-bar '{"id": 2, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}'
 ```
 Output:
 ```console
@@ -118,7 +118,7 @@ Output:
 
 6. Apply a function on a list of records (or any types that can be presented as JSON)
 ```sh
-./writ --wit ../test/list_record/list_record.wit ../test/list_record/list_record.wasm test-list-record '[{"name": "doggo", "age": 42}, {"name":"meow", "age":28}]'
+./writ --wit ../data/list_record/list_record.wit ../data/list_record/list_record.wasm test-list-record '[{"name": "doggo", "age": 42}, {"name":"meow", "age":28}]'
 ```
 Output
 ```console
@@ -128,7 +128,7 @@ Output
 
 Notice: Bytes has to be presented as an array of integer, each integer represent one byte
 ```sh
-./writ --wit ../test/hilbert/hilbert.wit ../test/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
+./writ --wit ../data/hilbert/hilbert.wit ../data/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
 ```
 Output:
 ```console
@@ -145,15 +145,15 @@ docker build -t writ .
 
 Then you can run `docker run writ`, the above examples can be run as following:
 ```sh
-docker run writ --wit test/int/power.wit test/int/power.wasm power-of 2 3
-docker run writ test/int/power.wasm power-of 2 3
-docker run writ --wit test/string/split.wit test/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
-docker run writ --wit test/float/power.wit test/float/power.wasm power-of 2.0 3.0
-docker run writ --wit test/sentiment/sentiment.wit  test/sentiment/sentiment.wasm sentiment '"have a nice day"'
-docker run writ --wit test/record/record.wit test/record/record.wasm construct-bar '"meow"' 22
-docker run writ  --wit test/record/record.wit test/record/record.wasm bar '{"name": "meow", "age": 22}'
-docker run writ --wit test/record/record.wit test/record/record.wasm deeper-bar '{"name": "meow", "age": 22}'
-docker run writ --wit test/record/record.wit test/record/record.wasm rev-deeper-bar '{"id": 2, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}'
-docker run writ --wit test/list_record/list_record.wit test/list_record/list_record.wasm test-list-record '[{"name": "doggo", "age": 42}, {"name":"meow", "age":28}]'
-./writ --wit test/hilbert/hilbert.wit test/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
+docker run writ --wit data/int/power.wit data/int/power.wasm power-of 2 3
+docker run writ data/int/power.wasm power-of 2 3
+docker run writ --wit data/string/split.wit data/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
+docker run writ --wit data/float/power.wit data/float/power.wasm power-of 2.0 3.0
+docker run writ --wit data/sentiment/sentiment.wit  data/sentiment/sentiment.wasm sentiment '"have a nice day"'
+docker run writ --wit data/record/record.wit data/record/record.wasm construct-bar '"meow"' 22
+docker run writ  --wit data/record/record.wit data/record/record.wasm bar '{"name": "meow", "age": 22}'
+docker run writ --wit data/record/record.wit data/record/record.wasm deeper-bar '{"name": "meow", "age": 22}'
+docker run writ --wit data/record/record.wit data/record/record.wasm rev-deeper-bar '{"id": 2, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}'
+docker run writ --wit data/list_record/list_record.wit data/list_record/list_record.wasm test-list-record '[{"name": "doggo", "age": 42}, {"name":"meow", "age":28}]'
+docker run writ --wit data/hilbert/hilbert.wit data/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
 ```

@@ -33,6 +33,6 @@ RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v${WA
     | tar -xJ --wildcards --no-anchored --strip-components 1 -C /usr/bin wasmtime
 
 COPY src/ /usr/bin/ 
-COPY test test/
+COPY data data/
 
 ENTRYPOINT ["/usr/bin/writ"]
