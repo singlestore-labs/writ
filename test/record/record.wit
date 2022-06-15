@@ -20,14 +20,14 @@ record foo {
   b: list<bool>
 }
 
-construct-bar: function(name: string, age: s32) -> bar
-test-record: function(a: bar) -> s32
-test-deep-record: function(a: deep-bar) -> s32
-test-deeper-record: function(a: deeper-bar) -> s32
-bar: function(a: bar) -> bar
-deep-bar: function(a: bar) -> deep-bar
-deeper-bar: function(a: bar) -> deeper-bar
-rev-deeper-bar: function(a: deeper-bar) -> deeper-bar
+construct-bar: func(name: string, age: s32) -> bar
+test-record: func(a: bar) -> s32
+test-deep-record: func(a: deep-bar) -> s32
+test-deeper-record: func(a: deeper-bar) -> s32
+bar: func(a: bar) -> bar
+deep-bar: func(a: bar) -> deep-bar
+deeper-bar: func(a: bar) -> deeper-bar
+rev-deeper-bar: func(a: deeper-bar) -> deeper-bar
 
-foo: function() -> foo
-test-foo: function(a: foo) -> foo
+foo: func() -> foo
+test-foo: func(a: foo) -> foo

@@ -1,1 +1,1 @@
-sum: function(a: list<s32>) -> s32
+sum: func(a: list<s32>) -> s32

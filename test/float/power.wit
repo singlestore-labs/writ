@@ -1,1 +1,1 @@
-power-of: function(a: float32, b: float32) -> float32
+power-of: func(a: float32, b: float32) -> float32

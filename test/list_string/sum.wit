@@ -1,1 +1,1 @@
-sum-length: function(a: list<string>) -> s32
+sum-length: func(a: list<string>) -> s32
