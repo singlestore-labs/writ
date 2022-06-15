@@ -3,4 +3,4 @@ record bar {
     age: s32
 }
 
-test-list-record: function(a: list<bar>) -> s32
+test-list-record: func(a: list<bar>) -> s32

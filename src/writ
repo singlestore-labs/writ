@@ -100,7 +100,6 @@ class Imports:
             "--invoke",
             self.func,
             self.wasm_file,
-            self.is_verbose,
         ] + [str(x) for x in self.args]
         try:
             result = subprocess.run(command, capture_output=True)
