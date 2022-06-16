@@ -1,6 +1,7 @@
 import argparse
 import os
 import pwd
+import sys
 import tempfile
 
 
@@ -58,4 +59,8 @@ def parse() -> tuple[str, str, bool, str]:
         help="path to the Wasm module, function name, and arguments in JSON format",
     )
     args = parser.parse_args()
+    if len(args.input_args) < 2:
+        print("Missing either wasm file path or function name.", file=sys.stderr)
+        parser.print_help()
+        sys.exit(1)
     return args.binding_path, args.wit_path, args.is_verbose, args.input_args

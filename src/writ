@@ -24,11 +24,6 @@ class Imports:
 
     def __init__(self) -> None:
         (binding_path, wit_path, is_verbose, input_args) = parse_input.parse()
-        if len(input_args) < 2:
-            raise error_handler.Error(
-                error_handler.ErrorCode.MISSING_INPUT,
-                "Missing either wasm file path or function name.",
-            )
         self.wasm_file = input_args[0]
         self.func = input_args[1]
         self.args = [
