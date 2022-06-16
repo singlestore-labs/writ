@@ -50,7 +50,7 @@ def generate_and_move(command: list[str], file_path: str, is_verbose: bool):
     except:
         raise error_handler.Error(
             error_handler.ErrorCode.UNKNOWN,
-            "Unknown error when running the command, likely caused by wrong/unmatched wit specification",
+            "Unknown error when running the command, likely caused by wrong/unmatched wit specification.",
         )
 
 
