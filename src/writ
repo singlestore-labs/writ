@@ -67,20 +67,22 @@ class Imports:
             lambda x: inspect.isclass(x) and x.__name__ == class_name,
         )
         if not py_import_classes:
-            raise error_handler.Error(
-                error_handler.ErrorCode.OBJECT_NOT_FOUND,
-                f"Class {class_name} is not found in {self.imported}.",
+            print(
+                f"ERROR: Class {class_name} is not found in {self.imported}. Check your wit/wasm fle name or function name and try again.",
+                file=sys.stderr,
             )
+            sys.exit(1)
         py_import_class = py_import_classes[0][1]
         py_funcs = inspect.getmembers(
             py_import_class,
             lambda x: inspect.isfunction(x) and x.__name__ == self.func,
         )
         if not py_funcs:
-            raise error_handler.Error(
-                error_handler.ErrorCode.OBJECT_NOT_FOUND,
-                f"Function {self.func} is not found in {py_import_class}. Check if your function name is correct or if you have included it.",
+            print(
+                f"ERROR: Function {self.func} is not found in {py_import_class}. Check if your function name is correct or if you have included it.",
+                file=sys.stderr,
             )
+            sys.exit(1)
         py_func = py_funcs[0][1]
         signatures = inspect.signature(py_func)
         return [
@@ -161,7 +163,7 @@ def run() -> Optional[str]:
             maybe_func(store)
         except:
             if imports.is_verbose:
-                print("Failed to invoke _initialize.", file=sys.stderr)
+                print("ERROR: Failed to invoke _initialize.", file=sys.stderr)
 
         if imports.wit_name is not None:
             return imports.run_with_wit_arg(linker, store, module)

@@ -1,5 +1,6 @@
 import error_handler
 import json
+import sys
 import typing
 
 
@@ -7,10 +8,11 @@ def check_and_load(json_args: str, index: int) -> str:
     try:
         loaded_json = json.loads(json_args[index])
     except:
-        raise error_handler.Error(
-            error_handler.ErrorCode.LOAD_JSON_FAILED,
-            f"Failed to load json object at index {str(index - 1)}.",
+        print(
+            f"ERROR: Failed to load json object at index {str(index - 1)}. Check your json syntax again.",
+            file=sys.stderr,
         )
+        sys.exit(1)
     return loaded_json
 
 
@@ -20,7 +22,7 @@ def check_and_dump(py_str: str) -> str:
     except:
         raise error_handler.Error(
             error_handler.ErrorCode.DUMP_JSON_FAILED,
-            f"Failed to convert python str: {py_str} to json output failed.",
+            f"ERROR: Failed to convert python str: {py_str} to json output failed.",
         )
     return json_str
 
@@ -36,10 +38,11 @@ def to_py_obj(pyobj: str) -> typing.Any:
         return pyobj
     elif isinstance(pyobj, bool):
         return pyobj.lower()
-    raise error_handler.Error(
-        error_handler.ErrorCode.PYOBJ_TO_PYSTR_FAILED,
-        f"Convert following Python type: {type(pyobj)} to Python str is not implemented",
+    print(
+        f"ERROR: Convert following Python type: {type(pyobj)} to Python str is not implemented",
+        file=sys.stderr,
     )
+    sys.exit(1)
 
 
 def is_atomic_type(arg: typing.Any) -> bool:
@@ -72,10 +75,11 @@ class ParseJson:
         arg_value, arg_type = arg[0], arg[1]
         if is_atomic_type(arg_value):
             if type(arg_value) is not arg_type:
-                raise error_handler.Error(
-                    error_handler.ErrorCode.TYPE_MISMATCH,
-                    f"Type mismatch between {arg_value} and {arg_type}",
+                print(
+                    f"ERROR: Type mismatch between {arg_value} and {arg_type}. Check your input again.",
+                    file=sys.stderr,
                 )
+                sys.exit(1)
             return arg_value
         elif arg_type is bytes:
             # if arg type is bytes, arg value type is assumed to be in form of
