@@ -144,8 +144,14 @@ class Imports:
 
 def run() -> Optional[str]:
     # initialize
+    config = wasmtime.Config()
+    config.debug_info = True
+    config.cranelift_opt_level = "none"
+
+    engine = wasmtime.Engine(config)
+
     imports = Imports()
-    store = wasmtime.Store()
+    store = wasmtime.Store(engine)
 
     try:
         module = wasmtime.Module.from_file(store.engine, imports.wasm_file)

@@ -1,0 +1,72 @@
+#!/bin/env bash
+
+DOCKER=$(command -v docker)
+if [ -z "${DOCKER}" ] ; then
+    echo "Docker was not found in your PATH.  Aborting."
+    exit 1
+fi
+
+usage() {
+    echo "Usage: $0 [--debug] [--wit WITPATH] WASMPATH FUNCNAME [...]"
+    exit 1
+}
+
+DEBUG=0
+WIT_PATH=
+while [ 1 ] ; do
+    case "$1" in
+        --debug)
+            DEBUG=1
+            ;;
+        --wit)
+            shift
+            [ -z "$1" ] && usage
+            WIT_PATH=$(readlink -f $1)
+            ;;
+        --*)
+            usage
+            ;;
+        *)
+            break
+            ;;
+    esac
+    shift
+done
+[ $# -lt 2 ] && usage
+
+WASM_PATH=$(readlink -f $1)
+shift
+WASM_FUNC=$1
+shift
+
+if [ ! -f "${WASM_PATH}" ] ; then
+    echo "The Wasm file '${WASM_PATH}' does not exist.  Aborting."
+    exit 1
+fi
+if [ -n "${WIT_PATH}" -a ! -f "${WIT_PATH}" ] ; then
+    echo "The WIT file '${WASM_PATH}' does not exist.  Aborting."
+    exit 1
+fi
+
+WIT_DIR=$(dirname ${WIT_PATH})
+WIT_NAME=$(basename ${WIT_PATH})
+WASM_DIR=$(dirname ${WASM_PATH})
+WASM_NAME=$(basename ${WASM_PATH})
+
+WRIT_CACHE_DIR=/tmp/writ-bind-cache-$(id -un)
+DOCKER_RUN_ARGS="-it --rm -v $(pwd):/work -v ${WRIT_CACHE_DIR}:/writ-cache -v ${WIT_DIR}:/wit-dir -v ${WASM_DIR}:/wasm-dir"
+GDB_OPTS=
+
+if [ ${DEBUG} -eq 1 ] ; then
+    echo "Entering debug mode ..."
+    DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS} --entrypoint gdb"
+    GDB_OPTS="--args /usr/local/bin/python /writ/src/writ"
+fi
+
+WIT_OPT=
+if [ -n "${WIT_PATH}" ] ; then
+    WIT_OPT="--wit /wit-dir/${WIT_NAME}"
+fi
+
+"${DOCKER}" run ${DOCKER_RUN_ARGS} writ $GDB_OPTS -b /writ-cache ${WIT_OPT} "/wasm-dir/${WASM_NAME}" "${WASM_FUNC}" "$@"
+

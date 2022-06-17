@@ -143,12 +143,26 @@ Set up (make sure you are at the directory containing `Dockerfile`:
 docker build -t writ .
 ```
 
-You can then run `writ` against the examples in this repo, as in the following
-example:
+We've provided a wrapper script to make running the docker image easier.  You can
+run it using the `writ-docker` script in this repo, as in the following
+example.  It understands local directory paths.
+
 ```sh
-docker run -it --rm -v $(pwd):/work \
-    writ --wit /work/data/sentiment/sentiment.wit \
-    /work/data/sentiment/sentiment.wasm \
+./writ-docker \
+    --wit data/sentiment/sentiment.wit \
+    data/sentiment/sentiment.wasm \
+    sentiment \
+    '"have a nice day"'
+```
+
+This script also allows you to run your Wasm program in a debugger (GDB), if 
+you choose.  You can do this by adding the `--debug` option, as follows:
+
+```sh
+./writ-docker \
+    --debug \
+    --wit data/sentiment/sentiment.wit \
+    data/sentiment/sentiment.wasm \
     sentiment \
     '"have a nice day"'
 ```
