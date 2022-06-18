@@ -1,38 +1,20 @@
-FROM debian as builder
+FROM rust:1.61.0-alpine as rust_builder
+RUN apk add build-base git openssh
+RUN cargo install --git https://github.com/bytecodealliance/wit-bindgen wit-bindgen-cli
+RUN git clone https://github.com/singlestore-labs/writ.git /writ && \
+    cd /writ && git checkout fix-usage && cd .. && \
+    rm -rf /writ/data /writ/.git
+RUN git clone https://github.com/bytecodealliance/wasmtime-py.git /wasmtime-py
 
-RUN apt-get clean
-RUN apt-get update
-RUN apt-get install -y \
-    build-essential \
-    curl
+FROM python:3.9-alpine as base
+COPY --from=rust_builder /usr/local/cargo/bin/wit-bindgen /usr/bin
+COPY --from=rust_builder /writ /writ
+COPY --from=rust_builder /wasmtime-py /wasmtime-py
+RUN apk add libgcc libc6-compat && \
+    ln -s /lib/libc.musl-x86_64.so.1 /lib/ld-linux-x86-64.so.2
+RUN cd wasmtime-py && python3 download-wasmtime.py && python3 setup.py install && \
+    cd .. && rm -rf /wasmtime-py
+RUN cd writ && python3 setup.py install
 
-# Update new packages
-RUN apt-get update
+ENTRYPOINT ["/writ/src/writ"]
 
-# Get Rust
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-
-# Get Python
-RUN apt-get install python3 -y
-RUN apt-get install python3-pip -y
-RUN pip install wasmtime 
-
-ENV PATH="/root/.cargo/bin:${PATH}"
-
-RUN rustup target add wasm32-wasi
-
-RUN cargo install cargo-wasi cargo-expand && \
-    cargo install --git https://github.com/bytecodealliance/wit-bindgen wit-bindgen-cli
-
-ENV WASI_SDK_VERSION=14.0
-RUN cd /opt && curl -L https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-14/wasi-sdk-${WASI_SDK_VERSION}-linux.tar.gz \
-    | tar -xz
-
-ENV WASMTIME_VERSION=0.33.0
-RUN curl -L https://github.com/bytecodealliance/wasmtime/releases/download/v${WASMTIME_VERSION}/wasmtime-v${WASMTIME_VERSION}-x86_64-linux.tar.xz \ 
-    | tar -xJ --wildcards --no-anchored --strip-components 1 -C /usr/bin wasmtime
-
-COPY src/ /usr/bin/ 
-COPY data data/
-
-ENTRYPOINT ["/usr/bin/writ"]

@@ -143,17 +143,12 @@ Set up (make sure you are at the directory containing `Dockerfile`:
 docker build -t writ .
 ```
 
-Then you can run `docker run writ`, the above examples can be run as following:
+You can then run `writ` against the examples in this repo, as in the following
+example:
 ```sh
-docker run writ --wit data/int/power.wit data/int/power.wasm power-of 2 3
-docker run writ data/int/power.wasm power-of 2 3
-docker run writ --wit data/string/split.wit data/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
-docker run writ --wit data/float/power.wit data/float/power.wasm power-of 2.0 3.0
-docker run writ --wit data/sentiment/sentiment.wit  data/sentiment/sentiment.wasm sentiment '"have a nice day"'
-docker run writ --wit data/record/record.wit data/record/record.wasm construct-bar '"meow"' 22
-docker run writ  --wit data/record/record.wit data/record/record.wasm bar '{"name": "meow", "age": 22}'
-docker run writ --wit data/record/record.wit data/record/record.wasm deeper-bar '{"name": "meow", "age": 22}'
-docker run writ --wit data/record/record.wit data/record/record.wasm rev-deeper-bar '{"id": 2, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}'
-docker run writ --wit data/list_record/list_record.wit data/list_record/list_record.wasm test-list-record '[{"name": "doggo", "age": 42}, {"name":"meow", "age":28}]'
-docker run writ --wit data/hilbert/hilbert.wit data/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
+docker run -it --rm -v $(pwd):/work \
+    writ --wit /work/data/sentiment/sentiment.wit \
+    /work/data/sentiment/sentiment.wasm \
+    sentiment \
+    '"have a nice day"'
 ```
