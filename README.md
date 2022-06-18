@@ -55,7 +55,7 @@ Output:
 
 2. `split string` example:
 ```sh
-./writ --wit ../data/string/split.wit ../data/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
+./writ --wit ../data/string/split.wit ../data/string/split.wasm split-str "wasm_rocks_the_house" "_"
 ```
 Output:
 ```console
@@ -152,7 +152,7 @@ example.  It understands local directory paths.
     --wit data/sentiment/sentiment.wit \
     data/sentiment/sentiment.wasm \
     sentiment \
-    '"have a nice day"'
+    "have a nice day"
 ```
 
 This script also allows you to run your Wasm program in a debugger (GDB), if 
@@ -164,5 +164,5 @@ you choose.  You can do this by adding the `--debug` option, as follows:
     --wit data/sentiment/sentiment.wit \
     data/sentiment/sentiment.wasm \
     sentiment \
-    '"have a nice day"'
+    "have a nice day"
 ```

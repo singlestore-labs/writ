@@ -26,10 +26,7 @@ class Imports:
         (binding_path, wit_path, is_verbose, input_args) = parse_input.parse()
         self.wasm_file = input_args[0]
         self.func = input_args[1]
-        self.args = [
-            json_utils.check_and_load(input_args, index)
-            for index in range(2, len(input_args))
-        ]
+        self.args = input_args[2:]
         self.is_verbose = is_verbose
 
         if wit_path is None:
@@ -107,6 +104,35 @@ class Imports:
                 "Unknown error when running the command, likely caused by wrong/unmatched wit specification",
             )
 
+    def fixup_args(self, types: list[typing.Any]) -> list[typing.Any]:
+        assert(len(self.args) == len(types))
+        fixed = []
+        for i in range(0, len(self.args)):
+            s = self.args[i]
+            if types[i] == str:
+                # Tolerate not surrounding strings with quotes.  Add them if a 
+                # top-level argument appears without them.
+                if len(s) <= 1 or (s[0] != '"' and s[-1] != '"'):
+                    s = '"' + s + '"'
+            elif types[i] == float:
+                # Coerce numeric types into a float representation.
+                try:
+                    v = float(s)
+                except:
+                    print(f"ERROR: Value at index {i} could not be converted to a float.", file=sys.stderr)
+                    sys.exit(1)
+                s = str(v)
+            elif types[i] == int:
+                try:
+                    v = int(s)
+                except:
+                    print(f"ERROR: Value at index {i} could not be converted to an int.", file=sys.stderr)
+                    sys.exit(1)
+                s = str(v)
+
+            fixed.append(s)
+        return fixed
+
     def run_with_wit_arg(
         self, linker: wasmtime.Linker, store: wasmtime.Store, module: wasmtime.Module
     ) -> str:
@@ -130,8 +156,14 @@ class Imports:
         parse_args_helper = json_utils.ParseJson(classes, self.imported)
 
         try:
+            fixed_args = self.fixup_args(type_list[2:])
+            if self.is_verbose:
+                print("Fixed up arguments: {}".format(fixed_args))
+            json_args = []
+            for index in range(0, len(fixed_args)):
+                json_args.append(json_utils.check_and_load(fixed_args, index))
             args = parse_args_helper.parse_json_args(
-                list(zip(self.args, type_list[2:]))
+                list(zip(json_args, type_list[2:]))
             )
             result = getattr(wasm, self.func)(store, *args)
         except:
