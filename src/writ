@@ -166,6 +166,12 @@ class Imports:
                 list(zip(json_args, type_list[2:]))
             )
             result = getattr(wasm, self.func)(store, *args)
+        except wasmtime._trap.Trap as t:
+            print(
+                'ERROR: Wasm function trapped on the following input:\n{}\n\nDetails:\n{}'
+                    .format(self.args, t),
+                file=sys.stderr)
+            os._exit(1)
         except:
             raise error_handler.Error(
                 error_handler.ErrorCode.UNKNOWN,
@@ -176,6 +182,9 @@ class Imports:
 
 def run() -> Optional[str]:
     # initialize
+    os.environ['WASMTIME_BACKTRACE_DETAILS'] = '1'
+    os.environ['RUST_BACKTRACE'] = '1'
+
     config = wasmtime.Config()
     config.debug_info = True
     config.cranelift_opt_level = "none"

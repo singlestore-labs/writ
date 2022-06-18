@@ -2,7 +2,7 @@ FROM rust:1.61.0-alpine as rust_builder
 RUN apk add build-base git openssh
 RUN cargo install --git https://github.com/bytecodealliance/wit-bindgen wit-bindgen-cli
 RUN git clone https://github.com/singlestore-labs/writ.git /writ && \
-    cd /writ && git checkout fix-usage && cd .. && \
+    cd /writ && git checkout debug-source    && cd .. && \
     rm -rf /writ/data /writ/.git
 RUN git clone https://github.com/bytecodealliance/wasmtime-py.git /wasmtime-py
 
