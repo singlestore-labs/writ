@@ -148,7 +148,7 @@ example:
 ```sh
 docker run -it --rm -v $(pwd):/work \
     writ --wit /work/data/sentiment/sentiment.wit \
-    /work/data/sentiment.wasm \
+    /work/data/sentiment/sentiment.wasm \
     sentiment \
     '"have a nice day"'
 ```
