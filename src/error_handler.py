@@ -1,5 +1,13 @@
+import os
+import sys
 from enum import Enum
 
+def eprint(s):
+    print(s, file=sys.stderr)
+
+def abort(s):
+    eprint(s)
+    os._exit(1)
 
 class ErrorCode(Enum):
     INITIALIZE_MODULE_FAILED = 1

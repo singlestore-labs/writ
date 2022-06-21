@@ -25,7 +25,7 @@ pip install writ
 ## Usage
 ```console
 $ python3 writ --help
-usage: writ [-h] [-b [BINDING_PATH]] [-w [WIT_PATH]] [-v] ...
+usage: writ [-h] [-b BATCH_PATH] [-c CACHE_PATH] [-w WIT_PATH] [-v] ...
 
 WASI Reactor Interface Tester
 
@@ -34,9 +34,11 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -b [BINDING_PATH], --bindings [BINDING_PATH]
+  -b BATCH_PATH, --batch BATCH_PATH
+                        path to a file coontaining a JSON list of row inputs
+  -c CACHE_PATH, --cache CACHE_PATH
                         directory path to use for the binding cache
-  -w [WIT_PATH], --wit [WIT_PATH]
+  -w WIT_PATH, --wit WIT_PATH
                         path to the WIT file
   -v, --verbose         enable debug output
 ```

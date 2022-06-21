@@ -4,16 +4,19 @@ import contextlib
 import error_handler
 import importlib
 import inspect
+import json
 import json_utils
 import os
 import parse_input
 import re
 import subprocess
 import sys
+import textwrap
 import typing
 import validate
 import wasmtime
 
+from error_handler import abort
 
 class Imports:
     wit_name: Optional[str]
@@ -23,11 +26,42 @@ class Imports:
     classes: dict
 
     def __init__(self) -> None:
-        (binding_path, wit_path, is_verbose, input_args) = parse_input.parse()
+        (cache_path, batch_path, wit_path, is_verbose, is_quiet, input_args) = parse_input.parse()
         self.wasm_file = input_args[0]
         self.func = input_args[1]
         self.args = input_args[2:]
         self.is_verbose = is_verbose
+        self.is_quiet = is_quiet
+
+        self.batch = None
+        self.batch_ctr = -1
+        if batch_path is not None:
+            assert(len(self.args) == 0)
+            f = None
+            try:
+                try:
+                    f = open(batch_path)
+                except Exception as e:
+                    abort(f"ERROR: Could not open batch file '{batch_path}': {e}")
+                assert(f)
+
+                # We risk running out of memory with this approach, but the
+                # easy workaround is just to break batch files into separate
+                # parts, so I'm going to take the easy way out right now.
+                try:
+                    self.batch = json.load(f)
+                except MemoryError:
+                    abort(f"ERROR: Out of memory while reading batch JSON file; try breaking it into smaller parts.")
+                except Exception as e:
+                    abort(f"ERROR: Unexpected problem loading JSON file: {e}")
+            finally:
+                f.close()
+
+            # Batch input should be a list type, and at least one row.
+            if type(self.batch) is not list:
+                abort("ERROR: Batch input must be a list of single values, or a list of lists.")
+            if len(self.batch) == 0:
+                abort(f"ERROR: The batch file '{batch_path}' contained no rows.")
 
         if wit_path is None:
             self.wit_name = None
@@ -37,9 +71,9 @@ class Imports:
             # generate bindings
             export_name = f"{self.wit_name}_export_bindings"
             import_name = f"{self.wit_name}_import_bindings"
-            export_path = os.path.join(binding_path, f"{export_name}.py")
-            import_path = os.path.join(binding_path, f"{import_name}.py")
-            wit_cached_path = os.path.join(binding_path, f"{self.wit_name}.wit")
+            export_path = os.path.join(cache_path, f"{export_name}.py")
+            import_path = os.path.join(cache_path, f"{import_name}.py")
+            wit_cached_path = os.path.join(cache_path, f"{self.wit_name}.wit")
 
             WIT_BINDGEN_PATH = validate.check_command(
                 "WRIT_WITBINDGEN_PATH", "wit-bindgen"
@@ -54,9 +88,19 @@ class Imports:
                 is_verbose,
             )
 
-            sys.path.insert(1, binding_path)
+            sys.path.insert(1, cache_path)
             self.imported = importlib.import_module(import_name)
             self.exported = importlib.import_module(export_name)
+
+    def prepare_next_row(self) -> None:
+        if self.batch:
+            assert(self.batch_ctr + 1 < len(self.batch))
+
+            self.batch_ctr += 1
+            self.args = self.batch[self.batch_ctr]
+
+        if type(self.args) is not list:
+            self.args = [self.args]
 
     def get_types(self, class_name: str) -> list[typing.Any]:
         py_import_classes = inspect.getmembers(
@@ -64,45 +108,69 @@ class Imports:
             lambda x: inspect.isclass(x) and x.__name__ == class_name,
         )
         if not py_import_classes:
-            print(
-                f"ERROR: Class {class_name} is not found in {self.imported}. Check your wit/wasm fle name or function name and try again.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+            abort(f"ERROR: Class {class_name} is not found in {self.imported}. Check your wit/wasm fle name or function name and try again.")
         py_import_class = py_import_classes[0][1]
         py_funcs = inspect.getmembers(
             py_import_class,
             lambda x: inspect.isfunction(x) and x.__name__ == self.func,
         )
         if not py_funcs:
-            print(
-                f"ERROR: Function {self.func} is not found in {py_import_class}. Check if your function name is correct or if you have included it.",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+            abort(f"ERROR: Function {self.func} is not found in {py_import_class}. Check if your function name is correct or if you have included it.")
         py_func = py_funcs[0][1]
         signatures = inspect.signature(py_func)
         return [
             signatures.parameters[x].annotation for x in signatures.parameters.keys()
         ]
 
-    def run_without_wit_arg(self) -> str:
-        WASMTIME_CMD = validate.check_command("WRIT_WASMTIME_PATH", "wasmtime")
-        command = [
-            validate.resolve_string(WASMTIME_CMD),
-            "run",
-            "--invoke",
-            self.func,
-            self.wasm_file,
-        ] + [str(x) for x in self.args]
-        try:
-            result = subprocess.run(command, capture_output=True)
-            return result.stdout.decode("utf-8").strip()
-        except:
-            raise error_handler.Error(
-                error_handler.ErrorCode.UNKNOWN,
-                "Unknown error when running the command, likely caused by wrong/unmatched wit specification",
-            )
+    def run_without_wit_arg(
+        self, linker: wasmtime.Linker, store: wasmtime.Store, module: wasmtime.Module
+    ) -> str:
+        maybe_func = linker.get(store, "test", self.func)
+        if not isinstance(maybe_func, wasmtime.Func):
+            abort(f"ERROR: The symbol '{self.func}' is not a Wasm function.")
+
+        if self.batch:
+            num_recs = len(self.batch)
+            rec_info = lambda idx: f" at record {idx+1}"
+            out_indent = 2
+            self.emit("[\n")
+        else:
+            num_recs = 1
+            rec_info = lambda idx: ""
+            out_indent = 0
+
+        # Get the type so we can validate the params.
+        ftype = maybe_func.type(store)
+
+        for i in range(0, num_recs):
+            self.prepare_next_row()
+
+            if len(self.args) != len(ftype.params):
+                abort(f"ERROR: Argument mismatch{rec_info(i)}.  Expected {len(ftype.params)} arguments, but got {len(self.args)}.")
+
+            fixed_args = []
+            for j in range(0, len(self.args)):
+                expected = ftype.params[j]
+                if expected.f32() or expected.f64():
+                    fixed_args.append(float(self.args[j]))
+                elif expected.i32() or expected.i64():
+                    fixed_args.append(int(self.args[j]))
+                else:
+                    abort(f"ERROR: Wasm function argument type at index {j} is not currently supported by writ.")
+
+            try:
+                res = maybe_func(store, *fixed_args)
+            except Exception as e:
+                abort(f"ERROR: Invocation of function '{self.func}' failed.\nDetails: {e}")
+            assert(type(res) is int or type(res) is float)
+
+            if i > 0:
+                assert(self.batch)
+                self.emit(", ")
+            self.emit(f"{' '*out_indent}{res}\n")
+
+        if self.batch:
+            self.emit("]\n")
 
     def fixup_args(self, types: list[typing.Any]) -> list[typing.Any]:
         assert(len(self.args) == len(types))
@@ -119,15 +187,13 @@ class Imports:
                 try:
                     v = float(s)
                 except:
-                    print(f"ERROR: Value at index {i} could not be converted to a float.", file=sys.stderr)
-                    sys.exit(1)
+                    abort(f"ERROR: Value at index {i} could not be converted to a float.")
                 s = str(v)
             elif types[i] == int:
                 try:
                     v = int(s)
                 except:
-                    print(f"ERROR: Value at index {i} could not be converted to an int.", file=sys.stderr)
-                    sys.exit(1)
+                    abort(f"ERROR: Value at index {i} could not be converted to an int.")
                 s = str(v)
 
             fixed.append(s)
@@ -155,32 +221,61 @@ class Imports:
         classes = dict(inspect.getmembers(self.imported, inspect.isclass))
         parse_args_helper = json_utils.ParseJson(classes, self.imported)
 
-        try:
-            fixed_args = self.fixup_args(type_list[2:])
-            if self.is_verbose:
-                print("Fixed up arguments: {}".format(fixed_args))
-            json_args = []
-            for index in range(0, len(fixed_args)):
-                json_args.append(json_utils.check_and_load(fixed_args, index))
-            args = parse_args_helper.parse_json_args(
-                list(zip(json_args, type_list[2:]))
-            )
-            result = getattr(wasm, self.func)(store, *args)
-        except wasmtime._trap.Trap as t:
-            print(
-                'ERROR: Wasm function trapped on the following input:\n{}\n\nDetails:\n{}'
-                    .format(self.args, t),
-                file=sys.stderr)
-            os._exit(1)
-        except:
-            raise error_handler.Error(
-                error_handler.ErrorCode.UNKNOWN,
-                "Unknown error when running the command.",
-            )
-        return json_utils.check_and_dump(json_utils.to_py_obj(result))
+        if self.batch:
+            num_recs = len(self.batch)
+            rec_info = lambda idx: f" at record {idx+1}"
+            out_indent = 2
+            self.emit("[\n")
+        else:
+            num_recs = 1
+            rec_info = lambda idx: ""
+            out_indent = 0
 
+        for i in range(0, num_recs):
+            self.prepare_next_row()
 
-def run() -> Optional[str]:
+            if len(self.args) != len(type_list[2:]):
+                abort(f"ERROR: Argument mismatch{rec_info(i)}.  Expected {len(type_list[2:])} arguments, but got {len(self.args)}.")
+
+            result = None
+            try:
+                fixed_args = self.fixup_args(type_list[2:])
+                if self.is_verbose:
+                    print("INFO: Fixed up arguments: {}".format(fixed_args))
+                json_args = []
+                for index in range(0, len(fixed_args)):
+                    json_args.append(json_utils.check_and_load(fixed_args, index))
+                args = parse_args_helper.parse_json_args(
+                    list(zip(json_args, type_list[2:]))
+                )
+                result = getattr(wasm, self.func)(store, *args)
+            except wasmtime._trap.Trap as t:
+                abort(f'ERROR: Wasm function trapped on the following input{rec_info(i)}:\n{self.args}\n\nDetails:\n{t}')
+            except:
+                raise error_handler.Error(
+                    error_handler.ErrorCode.UNKNOWN,
+                    "Unknown error when running the command.",
+                )
+            assert(result)
+
+            py_str_out = json_utils.to_py_obj(result)
+            json_str_out = json.dumps(py_str_out, indent=out_indent)
+
+            if i > 0:
+                assert(self.batch)
+                self.emit(",\n")
+            self.emit(textwrap.indent(json_str_out, " "*out_indent))
+
+        if self.batch:
+            if i > 0:
+                self.emit("\n")
+            self.emit("]\n")
+
+    def emit(self, s: str) -> None:
+        if not self.is_quiet:
+            sys.stdout.write(s)
+
+def run() -> None:
     # initialize
     os.environ['WASMTIME_BACKTRACE_DETAILS'] = '1'
     os.environ['RUST_BACKTRACE'] = '1'
@@ -210,17 +305,16 @@ def run() -> Optional[str]:
             maybe_func(store)
         except:
             if imports.is_verbose:
-                print("ERROR: Failed to invoke _initialize.", file=sys.stderr)
+                print("WARNING: Failed to invoke _initialize.", file=sys.stderr)
 
         if imports.wit_name is not None:
             return imports.run_with_wit_arg(linker, store, module)
-        return imports.run_without_wit_arg()
-    except:
-        raise error_handler.Error(
-            error_handler.ErrorCode.INITIALIZE_MODULE_FAILED,
-            "Failed to invoke wasm module.",
-        )
+        else:
+            return imports.run_without_wit_arg(linker, store, module)
+    except Exception as e:
+        abort(f"ERROR: Failed to invoke wasm module: {e}.")
 
 
 if __name__ == "__main__":
-    print(run())
+    run()
+
