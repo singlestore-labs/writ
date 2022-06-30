@@ -6,18 +6,18 @@ When no WIT file is provided, the arguments will be interpreted as basic types t
 
 To facilitate expression of complex types, this tool accepts JSON notation as input, and produces JSON notation as output.  For more information, please see the [examples](#examples) section below. 
 
-## Usage
+# Usage
 You may use this tool locally, or via a [Docker](#building-and-running-the-docker-image) container.
 
-### Docker
+## Docker
 
-#### Prerequisites
+### Prerequisites
 Please make sure you have Docker installed.
 
-#### Installation
+### Installation
 To use this program in a docker container, you'll need the [writ-docker](https://github.com/singlestore-labs/writ/bin/writ-docker) script.  You can either clone this repository and run it from there, or just download this script by itself and run it in a location of your choosing.
 
-#### Running
+### Running
 The general form is as follows:
 ```sh
 Usage: writ-docker [OPTIONS] WASMFILE FUNCNAME [ARGS...]
@@ -52,7 +52,7 @@ Specifies 0 or more arguments to pass into the Wasm function.  Complex arguments
 `-w, --wit`
 * Optionally specifies the path to the WIT (`.wit`) file.  If this is not provided, then only simple numeric types may be passed into the Wasm function.
 
-#### Debugging
+### Debugging
 The Docker image includes GDB, and provides options to run your Wasm program in a debugger.
 
 To do this, specify the "--debug" flag on the command line:
@@ -67,9 +67,9 @@ writ-docker --debug --source ~/myprog/src --source /usr/local/src/rust ...
 
 *Note*: At this time, debugger support for Wasm is a bit thin. You will be able to step through your code and get nice back traces on failure, however you won't be able to inspect local variables yet. Hopefully that will be resolved in the future as debugger support increases for Wasm modules.
 
-### Local
+## Local
 
-#### Prerequisites
+### Prerequisites
 To use this program locally, you'll first need to ensure that the following prerequisite software is installed:
 
 * [Wasmtime](https://wasmtime.dev/)
@@ -80,10 +80,10 @@ To use this program locally, you'll first need to ensure that the following prer
 
 * [WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-14)
 
-#### Installation
+### Installation
 For now, just clone this repo.  In the future, we plan to add this program to *PyPI*.
 
-#### Running
+### Running
 The general form is as follows:
 ```sh
 Usage: writ [OPTIONS] WASMFILE FUNCNAME [ARGS...]
@@ -115,7 +115,7 @@ Specifies 0 or more arguments to pass into the Wasm function.  Complex arguments
 `-w, --wit`
 * Optionally specifies the path to the WIT (`.wit`) file.  If this is not provided, then only simple numeric types may be passed into the Wasm function.
 
-#### Debugging
+### Debugging
 You can debug your Wasm module running locally in `writ`.  To do this, pass the path to your python interpreter as the first argument to your debugger.  For example:
 
 *GDB*
@@ -130,7 +130,7 @@ lldb -- /usr/bin/python3 src/writ --wit examples/int/power.wit examples/int/powe
 
 *Note*: At this time, debugger support for Wasm is a bit thin. You will be able to step through your code and get nice back traces on failure, however you won't be able to inspect local variables yet. Hopefully that will be resolved in the future as debugger support increases for Wasm modules.
 
-## Batch File Format
+# Batch File Format
 A JSON-formatted file may be passed in lieu of in-line arguments.  This file must consist of either a list of lists or a list of single values.  For example, either of the following forms will work:
 
 ```json
@@ -153,10 +153,10 @@ Each entry in the outer-most list represents the arguments for a single call int
 
 When a batch file is in use, output will be formatted in a similar way, with each outer list entry corresponding to one record of input.
 
-## Examples 
+# Examples 
 All of the examples below apply equally to both `writ` and `writ-docker`.
 
-### Simple numeric arguments
+## Simple numeric arguments
 This example passes simple numerics as arguments.  Due to the simplicity of the 
 parameter types (all numeric), a WIT file is optional.
 ```sh
@@ -171,7 +171,7 @@ Output:
 8
 ```
 
-### Simple numeric arguments with type coercion
+## Simple numeric arguments with type coercion
 Numerics will be coerced to the declared WIT type, where possible.
 ```sh
 writ --wit examples/float/power.wit examples/float/power.wasm power-of 2.0 3.0
@@ -181,7 +181,7 @@ Output:
 8.0
 ```
 
-### String arguments
+## String arguments
 As a convenience, string arguments may be passed literally and need not include the escaped quote character that JSON requires.
 ```sh
 writ --wit examples/string/split.wit examples/string/split.wasm split-str "wasm_rocks_the_house" "_"
@@ -212,7 +212,7 @@ Output:
 ]
 ```
 
-### Complex arguments and binary data
+## Complex arguments and binary data
 Here, we represent the required WIT `record` type as a JSON object with name and value pairs.  In this example, `vec` is a blob (`list<u8>`), so we must represent it as a JSON list of single byte values.
 ```sh
 writ --wit examples/hilbert/hilbert.wit examples/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
@@ -222,7 +222,7 @@ Output:
 [{"idx": "0"}]
 ```
 
-### Testing multiple records
+## Testing multiple records
 Here, we'll test splitting some strings.  We use the `--batch` option for this.
 e
 ```sh
@@ -291,7 +291,7 @@ Output:
 ]
 ```
 
-## Building the Docker Image
+# Building the Docker Image
 For this, you will need [Docker](https://docs.docker.com/engine/install/) installed.
 
 ```bash
