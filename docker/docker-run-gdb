@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # This script should only run if we're in a Docker container.
-if ! grep -sq 'docker\|lxc' /proc/1/cgroup ; then
+if [ ! -f /.dockerenv ] ; then
     echo "This script can only be run in a Docker container."
     exit 1
 fi

@@ -1,170 +1,300 @@
 # WRIT (WASI Reactor Interface Tester)
 
-A CLI tool that given a WIT specification, will correctly interpret and cast arguments for an arbitrarily specified function in a Wasm module, and run it.  In particular, this tool will be useful when writing and testing “reactor” style WASI modules, where there is no “main” routine to invoke.
+This is a CLI tool that, given a WIT specification, will correctly interpret and cast arguments for an arbitrarily specified function in a Wasm module, and run it.  In particular, this tool is be useful when writing and testing “reactor” style WASI modules, where there is no `main` routine to invoke.
 
 When no WIT file is provided, the arguments will be interpreted as basic types the same way "wasmtime --invoke" works
 
-To facilitate expression of complex types, the tool will accept JSON notation as input and produce JSON notation as output.
-
-## Prerequisites
-If you don't want to install these packages, there's an option to use Docker [below](#building-and-running-the-docker-image)
-1. Download and install [Wasmtime](https://wasmtime.dev/)
-
-2. Install [wasmtime-py](https://github.com/bytecodealliance/wasmtime-py)
-
-3. Install [wit-bindgen](https://github.com/bytecodealliance/wit-bindgen). You might need to install [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) first.
-
-4. Download and install the [WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-14)
-
-## Installation
-This package can be install from PyPI using pip:
-```sh
-pip install writ
-```
+To facilitate expression of complex types, this tool accepts JSON notation as input, and produces JSON notation as output.  For more information, please see the [examples](#examples) section below. 
 
 ## Usage
-```console
-$ python3 writ --help
-usage: writ [-h] [-b BATCH_PATH] [-c CACHE_PATH] [-w WIT_PATH] [-v] ...
+You may use this tool locally, or via a [Docker](#building-and-running-the-docker-image) container.
 
-WASI Reactor Interface Tester
+### Docker
 
-positional arguments:
-  input_args            path to the Wasm module, function name, and arguments in JSON format
+#### Prerequisites
+Please make sure you have Docker installed.
 
-optional arguments:
-  -h, --help            show this help message and exit
-  -b BATCH_PATH, --batch BATCH_PATH
-                        path to a file coontaining a JSON list of row inputs
-  -c CACHE_PATH, --cache CACHE_PATH
-                        directory path to use for the binding cache
-  -w WIT_PATH, --wit WIT_PATH
-                        path to the WIT file
-  -v, --verbose         enable debug output
+#### Installation
+To use this program in a docker container, you'll need the [writ-docker](https://github.com/singlestore-labs/writ/bin/writ-docker) script.  You can either clone this repository and run it from there, or just download this script by itself and run it in a location of your choosing.
+
+#### Running
+The general form is as follows:
+```sh
+Usage: writ-docker [OPTIONS] WASMFILE FUNCNAME [ARGS...]
 ```
 
-## Examples 
-There are a few examples in `/data` directory. First, we `cd src` into the directory containing the source code:
-1. `power` example: 
+*Arguments:*
+`WASMFILE`
+Specifies the path to your Wasm module (the `.wasm` file).
+
+`FUNCNAME`
+Specifies the name of the function you wish to test.
+
+`ARGS`
+Specifies 0 or more arguments to pass into the Wasm function.  Complex arguments may be expressed in JSON format.  May not be used with the `-b` option.
+
+*Options:*
+`-b, --batch BATCHFILE`
+* Specifies a path to a file containing one or more JSON-formatted inputs to use in place of in-line arguments (see [Batch File Format](batch-file-format), below).
+    
+`-d, --debug`
+* Starts the Wasm program in GDB.  See [Debugging](debugging), below.
+
+`-q, --quiet`
+* Supresses output.  This can be useful if you have many rows of input and just want to see if the function crashes.
+
+`-s, --source`
+* Only valid with the `-d` option, this specifies a source code directory into which the debugger can map files.  May specified more than once.
+
+`-v, --verbose`
+* Enables some additional diagnostic output about `writ` itself.
+
+`-w, --wit`
+* Optionally specifies the path to the WIT (`.wit`) file.  If this is not provided, then only simple numeric types may be passed into the Wasm function.
+
+#### Debugging
+The Docker image includes GDB, and provides options to run your Wasm program in a debugger.
+
+To do this, specify the "--debug" flag on the command line:
 ```sh
-./writ --wit ../data/int/power.wit ../data/int/power.wasm power-of 2 3
-./writ ../data/int/power.wasm power-of 2 3
+writ-docker --debug ...
+```
+
+If you wish, you can also map in local source directories so that the debugger can correctly display source code.  More than one directory may be specified.  For example:
+```sh
+writ-docker --debug --source ~/myprog/src --source /usr/local/src/rust ...
+```
+
+*Note*: At this time, debugger support for Wasm is a bit thin. You will be able to step through your code and get nice back traces on failure, however you won't be able to inspect local variables yet. Hopefully that will be resolved in the future as debugger support increases for Wasm modules.
+
+### Local
+
+#### Prerequisites
+To use this program locally, you'll first need to ensure that the following prerequisite software is installed:
+
+* [Wasmtime](https://wasmtime.dev/)
+
+* [wasmtime-py](https://github.com/bytecodealliance/wasmtime-py)
+
+* [wit-bindgen](https://github.com/bytecodealliance/wit-bindgen). You might need to install [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html) first.
+
+* [WASI SDK](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-14)
+
+#### Installation
+For now, just clone this repo.  In the future, we plan to add this program to *PyPI*.
+
+#### Running
+The general form is as follows:
+```sh
+Usage: writ [OPTIONS] WASMFILE FUNCNAME [ARGS...]
+```
+
+*Arguments:*
+`WASMFILE`
+Specifies the path to your Wasm module (the `.wasm` file).
+
+`FUNCNAME`
+Specifies the name of the function you wish to test.
+
+`ARGS`
+Specifies 0 or more arguments to pass into the Wasm function.  Complex arguments may be expressed in JSON format.  May not be used with the `-b` option.
+
+*Options:*
+`-b, --batch BATCHFILE`
+* Specifies a path to a file containing one or more JSON-formatted inputs to use in place of in-line arguments (see [Batch File Format](batch-file-format), below).
+
+`-c, --cache CACHEDIR`
+* Specifies a directory to use for the binding cache.  To help save time on repeated runs, `writ` can cache its generated bindings in a directory and re-use them again later.  You can specify the location of this directory with this option.
+    
+`-q, --quiet`
+* Supresses output.  This can be useful if you have many rows of input and just want to see if the function crashes.
+
+`-v, --verbose`
+* Enables some additional diagnostic output about `writ` itself.
+
+`-w, --wit`
+* Optionally specifies the path to the WIT (`.wit`) file.  If this is not provided, then only simple numeric types may be passed into the Wasm function.
+
+#### Debugging
+You can debug your Wasm module running locally in `writ`.  To do this, pass the path to your python interpreter as the first argument to your debugger.  For example:
+
+*GDB*
+```sh
+gdb --args /usr/bin/python3 src/writ --wit examples/int/power.wit examples/int/power.wasm power-of 2 3
+```
+
+*LLDB*
+```sh
+lldb -- /usr/bin/python3 src/writ --wit examples/int/power.wit examples/int/power.wasm power-of 2 3
+```
+
+*Note*: At this time, debugger support for Wasm is a bit thin. You will be able to step through your code and get nice back traces on failure, however you won't be able to inspect local variables yet. Hopefully that will be resolved in the future as debugger support increases for Wasm modules.
+
+## Batch File Format
+A JSON-formatted file may be passed in lieu of in-line arguments.  This file must consist of either a list of lists or a list of single values.  For example, either of the following forms will work:
+
+```json
+[
+  "John Lennon",
+  "Paul McCartney",
+  ...
+]
+```
+*or*
+```json
+[
+  [ "John Lennon", "Guitar", 1940 ],
+  [ "Paul McCartney", "Bass", 1942 ],
+  ...
+]
+```
+
+Each entry in the outer-most list represents the arguments for a single call into the Wasm function currently under test.
+
+When a batch file is in use, output will be formatted in a similar way, with each outer list entry corresponding to one record of input.
+
+## Examples 
+All of the examples below apply equally to both `writ` and `writ-docker`.
+
+### Simple numeric arguments
+This example passes simple numerics as arguments.  Due to the simplicity of the 
+parameter types (all numeric), a WIT file is optional.
+```sh
+writ --wit examples/int/power.wit examples/int/power.wasm power-of 2 3
+```
+*or*
+```sh
+writ examples/int/power.wasm power-of 2 3
 ```
 Output:
 ```console
 8
 ```
 
-2. `split string` example:
+### Simple numeric arguments with type coercion
+Numerics will be coerced to the declared WIT type, where possible.
 ```sh
-./writ --wit ../data/string/split.wit ../data/string/split.wasm split-str "wasm_rocks_the_house" "_"
-```
-Output:
-```console
-[{"str": "wasm", "idx": 0}, {"str": "rocks", "idx": 5}, {"str": "the", "idx": 11}, {"str": "house", "idx": 15}]
-```
-
-3. Same `power` example, but for float type
-float:
-```sh
-./writ --wit ../data/float/power.wit ../data/float/power.wasm power-of 2.0 3.0
+writ --wit examples/float/power.wit examples/float/power.wasm power-of 2.0 3.0
 ```
 Output:
 ```console
 8.0
 ```
-4. a machine learning model `sentiment analysis` example:
+
+### String arguments
+As a convenience, string arguments may be passed literally and need not include the escaped quote character that JSON requires.
+```sh
+writ --wit examples/string/split.wit examples/string/split.wasm split-str "wasm_rocks_the_house" "_"
 ```
-./writ --wit ../data/sentiment/sentiment.wit  ../data/sentiment/sentiment.wasm sentiment '"have a nice day"'
+*or*
+```sh
+writ --wit examples/string/split.wit examples/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
 ```
 Output:
 ```console
-{"compound": 0.4214636152117623, "positive": 0.5833333333333334, "negative": 0.0, "neutral": 0.4166666666666667}
+[
+  {
+    "str": "wasm",
+    "idx": 0
+  },
+  {
+    "str": "rocks",
+    "idx": 5
+  },
+  {
+    "str": "the",
+    "idx": 11
+  },
+  {
+    "str": "house",
+    "idx": 15
+  }
+]
 ```
 
-5. `record` examples:
-* Construct a struct `bar` giving a `string name` and an `integer age`:
+### Complex arguments and binary data
+Here, we represent the required WIT `record` type as a JSON object with name and value pairs.  In this example, `vec` is a blob (`list<u8>`), so we must represent it as a JSON list of single byte values.
 ```sh
-./writ --wit ../data/record/record.wit ../data/record/record.wasm construct-bar '"meow"' 22
-```
-Output:
-```console
-{"name": "meow", "age": 22}
-```
-* Apply a function on a given struct (`bar`)
-```sh
- ./writ --wit ../data/record/record.wit ../data/record/record.wasm bar '{"name": "meow", "age": 22}'
-```
-Output:
-```console
-{"name": "meow", "age": 32}
-```
-
-* Construct a nested struct given an input
-```sh
-./writ --wit ../data/record/record.wit ../data/record/record.wasm deeper-bar '{"name": "meow", "age": 22}'
-```
-Output:
-```console
-{"id": 2, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}
-```
-
-* Apply a function on a nested struct
-```sh
-./writ --wit ../data/record/record.wit ../data/record/record.wasm rev-deeper-bar '{"id": 2, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}'
-```
-Output:
-```console
-{"id": 4, "x": {"id": 1, "x": {"name": "meow", "age": 32}}}
-```
-
-6. Apply a function on a list of records (or any types that can be presented as JSON)
-```sh
-./writ --wit ../data/list_record/list_record.wit ../data/list_record/list_record.wasm test-list-record '[{"name": "doggo", "age": 42}, {"name":"meow", "age":28}]'
-```
-Output
-```console
-70
-```
-7. Apply a function on binary type
-
-Notice: Bytes has to be presented as an array of integer, each integer represent one byte
-```sh
-./writ --wit ../data/hilbert/hilbert.wit ../data/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
+writ --wit examples/hilbert/hilbert.wit examples/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
 ```
 Output:
 ```console
 [{"idx": "0"}]
 ```
 
-## Building and Running the Docker Image
-You will need to install [Docker](https://docs.docker.com/engine/install/).
-
-Set up (make sure you are at the directory containing `Dockerfile`:
+### Testing multiple records
+Here, we'll test splitting some strings.  We use the `--batch` option for this.
+e
 ```sh
-docker build -t writ .
+cat<<EOF > /tmp/writ-test.json
+[ 
+  ["first_string_to_test", "_"],
+  ["second-string-to-test", "_"],
+  ["third-string_to__test", "_"],
+  ["fourth-string-to-test", ""]
+]
+EOF
+
+writ --batch /tmp/writ-test.json --wit examples/string/split.wit examples/string/split.wasm split-str
+```
+Output:
+```console
+[
+  [
+    {
+      "str": "first",
+      "idx": 0
+    },
+    {
+      "str": "string",
+      "idx": 6
+    },
+    {
+      "str": "to",
+      "idx": 13
+    },
+    {
+      "str": "test",
+      "idx": 16
+    }
+  ],
+  [
+    {
+      "str": "second-string-to-test",
+      "idx": 0
+    }
+  ],
+  [
+    {
+      "str": "third-string",
+      "idx": 0
+    },
+    {
+      "str": "to",
+      "idx": 13
+    },
+    {
+      "str": "",
+      "idx": 16
+    },
+    {
+      "str": "test",
+      "idx": 17
+    }
+  ],
+  [
+    {
+      "str": "fourth-string-to-test",
+      "idx": 0
+    }
+  ]
+]
 ```
 
-We've provided a wrapper script to make running the docker image easier.  You can
-run it using the `writ-docker` script in this repo, as in the following
-example.  It understands local directory paths.
+## Building the Docker Image
+For this, you will need [Docker](https://docs.docker.com/engine/install/) installed.
 
-```sh
-./writ-docker \
-    --wit data/sentiment/sentiment.wit \
-    data/sentiment/sentiment.wasm \
-    sentiment \
-    "have a nice day"
+```bash
+docker build -f docker/Dockerfile -t ghcr.io/singlestore-labs/writ .
 ```
 
-This script also allows you to run your Wasm program in a debugger (GDB), if 
-you choose.  You can do this by adding the `--debug` option, as follows:
-
-```sh
-./writ-docker \
-    --debug \
-    --wit data/sentiment/sentiment.wit \
-    data/sentiment/sentiment.wasm \
-    sentiment \
-    "have a nice day"
-```

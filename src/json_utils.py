@@ -4,7 +4,7 @@ import sys
 import typing
 
 
-def check_and_load(json_args: str, index: int) -> str:
+def check_and_load(json_args: typing.List[str], index: int) -> str:
     try:
         loaded_json = json.loads(json_args[index])
     except:

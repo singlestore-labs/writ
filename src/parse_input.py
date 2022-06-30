@@ -3,6 +3,8 @@ import os
 import pwd
 import sys
 import tempfile
+import textwrap
+import typing
 
 
 def check_cache_path(cache_path: str) -> str:
@@ -19,40 +21,60 @@ def valid_path(arg_path: str):
     else:
         raise argparse.ArgumentTypeError(f"{arg_path} does not exist!")
 
+class LineWrapRawTextHelpFormatter(argparse.RawDescriptionHelpFormatter):
+    def _split_lines(self, text, width):
+        text = self._whitespace_matcher.sub(' ', text).strip()
+        return textwrap.wrap(text, 55)
 
-def parse() -> tuple[str, str, str, bool, str]:
-    parser = argparse.ArgumentParser(description="WASI Reactor Interface Tester")
+def parse() -> tuple[str, str, str, bool, bool, str, str, typing.List[str]]:
+    parser = argparse.ArgumentParser(
+        usage="%(prog)s [OPTIONS] WASMFILE FUNCNAME [ARGS...]",
+        description="WASI Reactor Interface Tester",
+        formatter_class=LineWrapRawTextHelpFormatter,
+        epilog='''
+Batch File Format:
+  A JSON-formatted file may be passed in lieu of in-line arguments.  This file
+  must consist of either a list of lists or a list of single values.  For 
+  example, either of the following forms will work:
+  
+  [                                    [
+    "John Lennon",          OR           [ "John Lennon", "Guitar", 1940 ],
+    "Paul McCartney",                    [ "Paul McCartney", "Bass", 1942 ],
+    ...                                  ...
+  ]                                    ]
+
+  Each entry in the outer-most list represents the arguments for a single call
+  into FUNCNAME.
+''',
+    )
     parser.add_argument(
         "-c",
         "--cache",
-        dest="cache_path",
+        dest="CACHEDIR",
         type=check_cache_path,
-        nargs="?",
         default=os.path.join(
             tempfile.gettempdir(), f"writ-bind-cache-{pwd.getpwuid(os.getuid())[0]}"
         ),
         required=False,
-        help="directory path to use for the binding cache",
+        help="Specifies a directory to use for the binding cache",
     )
     parser.add_argument(
         "-w",
         "--wit",
-        dest="wit_path",
+        dest="WITFILE",
         type=valid_path,
-        nargs="?",
         default=None,
         required=False,
-        help="path to the WIT file",
+        help="Specifies the path to the WIT (.wit) file",
     )
     parser.add_argument(
         "-b",
         "--batch",
-        dest="batch_path",
+        dest="BATCHFILE",
         type=valid_path,
-        nargs="?",
         default=None,
         required=False,
-        help="path to a file containing a JSON list of row inputs",
+        help="Specifies a path to a file containing one or more JSON-formatted inputs to use in place of in-line arguments (see \"Batch File Format\", below)",
     )
     parser.add_argument(
         "-v",
@@ -61,7 +83,7 @@ def parse() -> tuple[str, str, str, bool, str]:
         default=False,
         required=False,
         action="store_true",
-        help="enable debug output",
+        help="Enable debug output",
     )
     parser.add_argument(
         "-q",
@@ -70,22 +92,27 @@ def parse() -> tuple[str, str, str, bool, str]:
         default=False,
         required=False,
         action="store_true",
-        help="suppress result output",
+        help="Suppress result output",
     )
     parser.add_argument(
-        dest="input_args",
+        dest="WASMFILE",
+        help="Specifies the path to the Wasm module (.wasm file)"
+    )
+    parser.add_argument(
+        dest="FUNCNAME",
+        help="Specifies the name of the Wasm function to run"
+    )
+    parser.add_argument(
+        dest="ARGS",
         nargs=argparse.REMAINDER,
-        help="path to the Wasm module, function name, and arguments in JSON format",
+        help="Specifies 0 or more arguments to pass into the Wasm function.  Complex arguments may be expressed in JSON format.  May not be used with the -b option",
     )
     args = parser.parse_args()
-    if len(args.input_args) < 2:
-        print("ERROR: Missing either wasm file path or function name.", file=sys.stderr)
-        parser.print_help()
-        os._exit(1)
-
-    if args.batch_path and len(args.input_args) > 2:
+    if args.BATCHFILE and len(args.ARGS) > 0:
         print("ERROR: Batch input (-b) may not be specified with in-line input.", file=sys.stderr)
         parser.print_help()
         os._exit(1)
 
-    return args.cache_path, args.batch_path, args.wit_path, args.is_verbose, args.is_quiet, args.input_args
+    return args.CACHEDIR, args.BATCHFILE, args.WITFILE, args.is_verbose, \
+        args.is_quiet, args.WASMFILE, args.FUNCNAME, args.ARGS
+
