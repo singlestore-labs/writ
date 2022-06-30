@@ -1,7 +1,7 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 PYTHON3=$(command -v python3)
-MYDIR=$(cd $(dirname $0) && pwd)
+MYDIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 
 PY_SUBVER=$(${PYTHON3} --version | awk '{print $2;}' | awk -F. '{print $2;}')
 if [ -z "${PY_SUBVER}" ] ; then
