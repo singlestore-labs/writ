@@ -15,7 +15,7 @@ You may use this tool locally, or via a [Docker](#building-and-running-the-docke
 Please make sure you have Docker installed.
 
 ### Installation
-To use this program in a docker container, you'll need the [writ-docker](https://github.com/singlestore-labs/writ/bin/writ-docker) script.  You can either clone this repository and run it from there, or just download this script by itself and run it in a location of your choosing.
+To use this program in a docker container, you'll need the [writ-docker](https://github.com/singlestore-labs/writ/blob/main/bin/writ-docker) script.  You can either clone this repository and run it from there, or just download this script by itself and run it in a location of your choosing.
 
 ### Running
 The general form is as follows:
