@@ -7,6 +7,7 @@ import filecmp
 import os
 import shutil
 import subprocess
+import tempfile
 import typing
 import validate
 
@@ -43,10 +44,16 @@ def check_command(env_name: str, command: str) -> typing.Optional[str]:
     return path
 
 
-def generate_and_move(command: list[str], file_path: str, is_verbose: bool):
+def generate_and_move(command: list[str], src_dir: str, dst_path: str, is_verbose: bool):
     try:
         subprocess.run(command, capture_output=not is_verbose)
-        shutil.move("bindings.py", file_path)
+        if is_verbose:
+            print("Invoking command {}".format(command))
+        src_path = os.path.join(src_dir, "bindings.py")
+        if is_verbose:
+            print("Copying {} to {}".format(src_path, dst_path))
+        shutil.copy(src_path, dst_path)
+        os.remove(src_path)
     except:
         raise error_handler.Error(
             error_handler.ErrorCode.UNKNOWN,
@@ -62,27 +69,39 @@ def check_cached_file_or_generate(
     import_path: str,
     is_verbose: bool,
 ) -> None:
+    if is_verbose:
+        print("Comparing {} to {}".format(cached_wit_path, wit_path))
     if not os.path.exists(cached_wit_path) or not filecmp.cmp(
         cached_wit_path, wit_path, shallow=False
     ):
-        generate_and_move(
-            [
-                validate.resolve_string(WIT_BINDGEN_PATH),
-                "wasmtime-py",
-                "--export",
-                wit_path,
-            ],
-            export_path,
-            is_verbose,
-        )
-        generate_and_move(
-            [
-                validate.resolve_string(WIT_BINDGEN_PATH),
-                "wasmtime-py",
-                "--import",
-                wit_path,
-            ],
-            import_path,
-            is_verbose,
-        )
-        shutil.copyfile(wit_path, cached_wit_path)
+        tmp_dir = tempfile.mkdtemp()
+        try:
+            generate_and_move(
+                [
+                    validate.resolve_string(WIT_BINDGEN_PATH),
+                    "wasmtime-py",
+                    "--export",
+                    wit_path,
+                    "--out-dir",
+                    tmp_dir,
+                ],
+                tmp_dir,
+                export_path,
+                is_verbose,
+            )
+            generate_and_move(
+                [
+                    validate.resolve_string(WIT_BINDGEN_PATH),
+                    "wasmtime-py",
+                    "--import",
+                    wit_path,
+                    "--out-dir",
+                    tmp_dir,
+                ],
+                tmp_dir,
+                import_path,
+                is_verbose,
+            )
+            shutil.copyfile(wit_path, cached_wit_path)
+        finally:
+            os.rmdir(tmp_dir)

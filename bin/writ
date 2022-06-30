@@ -1,0 +1,17 @@
+#!/bin/sh
+
+PYTHON3=$(command -v python3)
+MYDIR=$(cd $(dirname $0) && pwd)
+
+PY_SUBVER=$(${PYTHON3} --version | awk '{print $2;}' | awk -F. '{print $2;}')
+if [ -z "${PY_SUBVER}" ] ; then
+    echo "Unable to determine Python version."
+    exit 1
+fi
+if [ ${PY_SUBVER} -lt 9 ] ; then
+    echo "Python 3.9 or higher is required to run this program."
+    exit 1
+fi
+
+exec ${PYTHON3} ${MYDIR}/../src/writ "$@"
+

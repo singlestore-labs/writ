@@ -1,0 +1,190 @@
+#!/bin/env bash
+
+DOCKER=$(command -v docker)
+if [ -z "${DOCKER}" ] ; then
+    echo "Docker was not found in your PATH.  Aborting."
+    exit 1
+fi
+
+usage() {
+    cat <<EOF
+Usage: $0 [OPTIONS] WASMFILE FUNCNAME [ARG...]
+
+WASI Reactor Interface Tester (container mode)
+
+Arguments:
+  WASMFILE  Specifies the path to the Wasm module (.wasm file)
+  FUNCNAME  Specifies the Wasm function name to run
+  ARG...    Specifies 0 or more arguments to pass into the Wasm function.
+            Complex arguments may be expressed in JSON format.  May not be 
+            used with the -b option
+
+Options:
+  -a, --debug-args <ARGS>  Passes the given string as additional arguments into
+                           GDB (only valid with -d)
+  -b, --batch <BATCHFILE>  Specifies a path to a file containing one or more 
+                           JSON-formatted inputs to use in place of in-line 
+                           arguments (see "Batch File Format", below)
+  -d, --debug              Runs the Wasm module in GDB
+  -q, --quiet              Suppress result output
+  -s, --source <SRCDIR>    Specifies a source code directory; may be used
+                           multiple times (only valid with -d)
+  -v, --verbose            Enable debug output
+  -w, --wit <WITFILE>      Specifies the path to the WIT (.wit) file
+
+Batch File Format:
+  A JSON-formatted file may be passed in lieu of in-line arguments.  This file
+  must consist of either a list of lists or a list of single values.  For 
+  example, either of the following forms will work:
+  
+  [                                    [
+    "John Lennon",          OR           [ "John Lennon", "Guitar", 1940 ],
+    "Paul McCartney",                    [ "Paul McCartney", "Bass", 1942 ],
+    ...                                  ...
+  ]                                    ]
+
+  Each entry in the outer-most list represents the arguments for a single call
+  into FUNCNAME.
+EOF
+    exit 1
+}
+
+DEBUG=0
+SRC_DIRS=()
+WIT_PATH=
+BATCH_PATH=
+USER_GDB_OPTS=
+QUIET=0
+VERBOSE=0
+while [ 1 ] ; do
+    case "$1" in
+        -d|--debug)
+            if [ $DEBUG -eq 1 ] ; then
+                echo "ERROR: -d/--debug may only be specified once."
+                echo
+                usage
+            fi
+            DEBUG=1
+            ;;
+        -a|--debug-args)
+            shift
+            [ -z "$1" ] && usage
+            USER_GDB_OPTS="${USER_GDB_OPTS} $1"
+            ;;
+        -s|--source)
+            shift
+            [ -z "$1" ] && usage
+            if [ ! -d "$1" ] ; then
+                echo "ERROR: The source directory '$1' does not exist.  Aborting."
+                exit 1
+            fi
+            SRC_DIRS+=($(readlink -f $1))
+            ;;
+        -w|--wit)
+            shift
+            [ -z "$1" ] && usage
+            if [ -n "$WIT_PATH" ] ; then
+                echo "ERROR: WIT path may only be specified once."
+                echo
+                usage
+            fi
+            if [ ! -f "$1" ] ; then
+                echo "ERROR: The WIT file '$1' does not exist.  Aborting."
+                exit 1
+            fi
+            WIT_PATH=$(readlink -f $1)
+            ;;
+        -b|--batch)
+            shift
+            [ -z "$1" ] && usage
+            if [ -n "$BATCH_PATH" ] ; then
+                echo "ERROR: Batch path may only be specified once."
+                echo
+                usage
+            fi
+            if [ ! -f "$1" ] ; then
+                echo "ERROR: The file '$1' does not exist.  Aborting."
+                exit 1
+            fi
+            BATCH_PATH=$(readlink -f $1)
+            ;;
+        -q|--quiet)
+            QUIET=1
+            ;;
+        -v|--verbose)
+            VERBOSE=1
+            ;;
+        -*)
+            usage
+            ;;
+        *)
+            break
+            ;;
+    esac
+    shift
+done
+[ $# -lt 2 ] && usage
+
+if [ ${#SRC_DIRS[@]} -gt 0 -a $DEBUG -eq 0 ] ; then
+    echo "ERROR: The --source option is only valid with --debug."
+    echo
+    usage
+fi
+
+WASM_PATH=$(readlink -f $1)
+shift
+WASM_FUNC=$1
+shift
+
+if [ ! -f "${WASM_PATH}" ] ; then
+    echo "ERROR: The Wasm file '${WASM_PATH}' does not exist.  Aborting."
+    exit 1
+fi
+
+WASM_DIR=$(dirname ${WASM_PATH})
+WASM_NAME=$(basename ${WASM_PATH})
+
+WRIT_CACHE_DIR=/tmp/writ-bind-cache-$(id -un)
+DOCKER_RUN_ARGS="-it --rm -v ${WRIT_CACHE_DIR}:/writ-cache -v ${WASM_DIR}:/wasm-dir"
+GDB_OPTS=
+WRIT_OPTS=
+
+for SRC_DIR_IDX in "${!SRC_DIRS[@]}" ; do
+    SRC_DIR="${SRC_DIRS[$SRC_DIR_IDX]}"
+    MAPPED_SRC_DIR="/src-dirs/src-${SRC_DIR_IDX}"
+    DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS} -v ${SRC_DIR}:${MAPPED_SRC_DIR}"
+    GDB_OPTS="${GDB_OPTS} -d ${MAPPED_SRC_DIR}"
+done
+
+WRIT_OPTS="${WRIT_OPTS} --cache /writ-cache"
+
+if [ -n "${BATCH_PATH}" ] ; then
+    DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS} -v ${BATCH_PATH}:/tmp/batch.json"
+    WRIT_OPTS="${WRIT_OPTS} --batch /tmp/batch.json"
+fi
+if [ -n "${WIT_PATH}" ] ; then
+    WIT_NAME=$(basename ${WIT_PATH})
+    DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS} -v ${WIT_PATH}:/tmp/${WIT_NAME}"
+    WRIT_OPTS="${WRIT_OPTS} --wit /tmp/${WIT_NAME}"
+fi
+if [ ${VERBOSE} -eq 1 ] ; then
+    WRIT_OPTS="${WRIT_OPTS} --verbose"
+fi
+if [ ${QUIET} -eq 1 ] ; then
+    WRIT_OPTS="${WRIT_OPTS} --quiet"
+fi
+
+if [ ${DEBUG} -eq 1 ] ; then
+    echo "Entering debug mode ..."
+    DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS} --entrypoint /writ/docker/docker-run-gdb"
+    GDB_OPTS="${GDB_OPTS} ${USER_GDB_OPTS} -q --args /usr/local/bin/python /writ/src/writ"
+fi
+
+"${DOCKER}" run ${DOCKER_RUN_ARGS}  \
+    ghcr.io/singlestore-labs/writ   \
+    ${GDB_OPTS}                     \
+    ${WRIT_OPTS}                    \
+    "/wasm-dir/${WASM_NAME}"        \
+    "${WASM_FUNC}"                  \
+    "$@"
+

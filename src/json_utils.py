@@ -4,7 +4,7 @@ import sys
 import typing
 
 
-def check_and_load(json_args: str, index: int) -> str:
+def check_and_load(json_args: typing.List[str], index: int) -> str:
     try:
         loaded_json = json.loads(json_args[index])
     except:
@@ -14,17 +14,6 @@ def check_and_load(json_args: str, index: int) -> str:
         )
         sys.exit(1)
     return loaded_json
-
-
-def check_and_dump(py_str: str) -> str:
-    try:
-        json_str = json.dumps(py_str)
-    except:
-        raise error_handler.Error(
-            error_handler.ErrorCode.DUMP_JSON_FAILED,
-            f"ERROR: Failed to convert python str: {py_str} to json output failed.",
-        )
-    return json_str
 
 
 def to_py_obj(pyobj: str) -> typing.Any:
@@ -38,9 +27,9 @@ def to_py_obj(pyobj: str) -> typing.Any:
         return pyobj
     elif isinstance(pyobj, bool):
         return pyobj.lower()
-    print(
+    raise error_handler.Error(
+        error_handler.ErrorCode.PYOBJ_TO_PYSTR_FAILED,
         f"ERROR: Convert following Python type: {type(pyobj)} to Python str is not implemented",
-        file=sys.stderr,
     )
     sys.exit(1)
 
