@@ -57,12 +57,12 @@ The Docker image includes GDB, and provides options to run your Wasm program in 
 
 To do this, specify the "--debug" flag on the command line:
 ```sh
-writ-docker --debug ...
+bin/writ-docker --debug ...
 ```
 
 If you wish, you can also map in local source directories so that the debugger can correctly display source code.  More than one directory may be specified.  For example:
 ```sh
-writ-docker --debug --source ~/myprog/src --source /usr/local/src/rust ...
+bin/writ-docker --debug --source ~/myprog/src --source /usr/local/src/rust ...
 ```
 
 *Note*: At this time, debugger support for Wasm is a bit thin. You will be able to step through your code and get nice back traces on failure, however you won't be able to inspect local variables yet. Hopefully that will be resolved in the future as debugger support increases for Wasm modules.
@@ -160,11 +160,11 @@ All of the examples below apply equally to both `writ` and `writ-docker`.
 This example passes simple numerics as arguments.  Due to the simplicity of the 
 parameter types (all numeric), a WIT file is optional.
 ```sh
-writ --wit examples/int/power.wit examples/int/power.wasm power-of 2 3
+bin/writ --wit examples/int/power.wit examples/int/power.wasm power-of 2 3
 ```
 *or*
 ```sh
-writ examples/int/power.wasm power-of 2 3
+bin/writ examples/int/power.wasm power-of 2 3
 ```
 Output:
 ```console
@@ -174,7 +174,7 @@ Output:
 ## Simple numeric arguments with type coercion
 Numerics will be coerced to the declared WIT type, where possible.
 ```sh
-writ --wit examples/float/power.wit examples/float/power.wasm power-of 2.0 3.0
+bin/writ --wit examples/float/power.wit examples/float/power.wasm power-of 2.0 3.0
 ```
 Output:
 ```console
@@ -184,11 +184,11 @@ Output:
 ## String arguments
 As a convenience, string arguments may be passed literally and need not include the escaped quote character that JSON requires.
 ```sh
-writ --wit examples/string/split.wit examples/string/split.wasm split-str "wasm_rocks_the_house" "_"
+bin/writ --wit examples/string/split.wit examples/string/split.wasm split-str "wasm_rocks_the_house" "_"
 ```
 *or*
 ```sh
-writ --wit examples/string/split.wit examples/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
+bin/writ --wit examples/string/split.wit examples/string/split.wasm split-str '"wasm_rocks_the_house"' '"_"'
 ```
 Output:
 ```console
@@ -215,7 +215,7 @@ Output:
 ## Complex arguments and binary data
 Here, we represent the required WIT `record` type as a JSON object with name and value pairs.  In this example, `vec` is a blob (`list<u8>`), so we must represent it as a JSON list of single byte values.
 ```sh
-writ --wit examples/hilbert/hilbert.wit examples/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
+bin/writ --wit examples/hilbert/hilbert.wit examples/hilbert/hilbert.wasm hilbert-encode '{"vec": [19,2,20,56,6,2,25,19], "min-value": 1.0, "max-value": 3.0, "scale": 6.0}'
 ```
 Output:
 ```console
@@ -235,7 +235,7 @@ cat<<EOF > /tmp/writ-test.json
 ]
 EOF
 
-writ --batch /tmp/writ-test.json --wit examples/string/split.wit examples/string/split.wasm split-str
+bin/writ --batch /tmp/writ-test.json --wit examples/string/split.wit examples/string/split.wasm split-str
 ```
 Output:
 ```console
