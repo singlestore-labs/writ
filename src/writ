@@ -98,7 +98,7 @@ class Imports:
             assert(self.batch_ctr + 1 < len(self.batch))
 
             self.batch_ctr += 1
-            if self.batch[self.batch_ctr] is not list:
+            if type(self.batch[self.batch_ctr]) is not list:
                 self.args = [self.batch[self.batch_ctr]]
             else:
                 self.args = self.batch[self.batch_ctr]
