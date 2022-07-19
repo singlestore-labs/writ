@@ -262,7 +262,7 @@ class Imports:
                     error_handler.ErrorCode.UNKNOWN,
                     "Unknown error when running the command.",
                 )
-            assert(result)
+            assert(result is not None)
 
             py_str_out = json_utils.to_py_obj(result)
             json_str_out = json.dumps(py_str_out, indent=2)
