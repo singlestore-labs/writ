@@ -26,7 +26,7 @@ class LineWrapRawTextHelpFormatter(argparse.RawDescriptionHelpFormatter):
         text = self._whitespace_matcher.sub(' ', text).strip()
         return textwrap.wrap(text, 55)
 
-def parse() -> tuple[str, str, str, bool, bool, str, str, typing.List[str]]:
+def parse():
     parser = argparse.ArgumentParser(
         usage="%(prog)s [OPTIONS] WASMFILE FUNCNAME [ARGS...]",
         description="WASI Reactor Interface Tester",
@@ -86,6 +86,15 @@ Batch File Format:
         help="Enable debug output",
     )
     parser.add_argument(
+        "-g",
+        "--debug-info",
+        dest="is_debug_info",
+        default=False,
+        required=False,
+        action="store_true",
+        help="Generate runtime debugging information for module (module must also be compiled in debug mode)",
+    )
+    parser.add_argument(
         "-q",
         "--quiet",
         dest="is_quiet",
@@ -113,6 +122,5 @@ Batch File Format:
         parser.print_help()
         os._exit(1)
 
-    return args.CACHEDIR, args.BATCHFILE, args.WITFILE, args.is_verbose, \
-        args.is_quiet, args.WASMFILE, args.FUNCNAME, args.ARGS
+    return args
 

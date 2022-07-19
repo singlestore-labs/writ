@@ -25,13 +25,16 @@ class Imports:
     args: list[str]
     classes: dict
 
-    def __init__(self) -> None:
-        (cache_path, batch_path, wit_path, is_verbose, is_quiet, wasm_file, func, input_args) = parse_input.parse()
-        self.wasm_file = wasm_file
-        self.func = func
-        self.args = input_args
-        self.is_verbose = is_verbose
-        self.is_quiet = is_quiet
+    def __init__(self, args) -> None:
+        cache_path = args.CACHEDIR
+        batch_path = args.BATCHFILE
+        wit_path   = args.WITFILE
+
+        self.wasm_file = args.WASMFILE
+        self.func = args.FUNCNAME
+        self.args = args.ARGS
+        self.is_verbose = args.is_verbose
+        self.is_quiet = args.is_quiet
 
         self.batch = None
         self.batch_ctr = -1
@@ -86,7 +89,7 @@ class Imports:
                 wit_cached_path,
                 export_path,
                 import_path,
-                is_verbose,
+                self.is_verbose,
             )
 
             sys.path.insert(1, cache_path)
@@ -283,17 +286,20 @@ class Imports:
             sys.stdout.write(s)
 
 def run() -> None:
+    args = parse_input.parse()
+
     # initialize
     os.environ['WASMTIME_BACKTRACE_DETAILS'] = '1'
     os.environ['RUST_BACKTRACE'] = '1'
 
     config = wasmtime.Config()
-    config.debug_info = True
-    config.cranelift_opt_level = "none"
+    if args.is_debug_info:
+        config.debug_info = True
+        config.cranelift_opt_level = "none"
 
     engine = wasmtime.Engine(config)
 
-    imports = Imports()
+    imports = Imports(args)
     store = wasmtime.Store(engine)
 
     try:

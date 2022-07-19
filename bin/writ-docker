@@ -178,6 +178,7 @@ if [ ${DEBUG} -eq 1 ] ; then
     echo "Entering debug mode ..."
     DOCKER_RUN_ARGS="${DOCKER_RUN_ARGS} --entrypoint /writ/docker/docker-run-gdb"
     GDB_OPTS="${GDB_OPTS} ${USER_GDB_OPTS} -q --args /usr/local/bin/python /writ/src/writ"
+    WRIT_OPTS="${WRIT_OPTS} --debug-info"
 fi
 
 "${DOCKER}" run ${DOCKER_RUN_ARGS}  \
