@@ -40,6 +40,9 @@ Specifies 0 or more arguments to pass into the Wasm function.  Complex arguments
 `-d, --debug`
 * Starts the Wasm program in GDB.  See [Debugging](debugging), below.
 
+`-e, --expect EXPECTSTR`
+* Specifies an expected result to JSON form.  If not matched, the program exits with the error code 2.  May not be used with -b.
+
 `-q, --quiet`
 * Supresses output.  This can be useful if you have many rows of input and just want to see if the function crashes.
 
@@ -106,6 +109,12 @@ Specifies 0 or more arguments to pass into the Wasm function.  Complex arguments
 `-c, --cache CACHEDIR`
 * Specifies a directory to use for the binding cache.  To help save time on repeated runs, `writ` can cache its generated bindings in a directory and re-use them again later.  You can specify the location of this directory with this option.
     
+`-e, --expect EXPECTSTR`
+* Specifies an expected result to JSON form.  If not matched, the program exits with the error code 2.  May not be used with -b.
+
+`-g, --debug-info`
+* Generate runtime debugging information for module (module must also be compiled in debug mode)
+
 `-q, --quiet`
 * Supresses output.  This can be useful if you have many rows of input and just want to see if the function crashes.
 
@@ -220,6 +229,23 @@ bin/writ --wit examples/hilbert/hilbert.wit examples/hilbert/hilbert.wasm hilber
 Output:
 ```console
 [{"idx": "0"}]
+```
+
+## Complex result with validation enabled
+Here, we run a Wasm function that produces a result with a complex type.  We show how to compare this result with an expected standard.  The `--expect` option compares the result with a value.
+```sh
+bin/writ --expected '{"compound": 0.123456, "positive": 0.7435897435897436, "negative": 0.0, "neutral": 0.25641025641025644}' --wit examples/sentiment/sentiment.wit examples/sentiment/sentiment.wasm sentiment "good boy"
+```
+
+Output:
+```console
+ERROR: Actual result does not match expected:
+
+Expected:
+{"compound": 0.123456, "positive": 0.7435897435897436, "negative": 0.0, "neutral": 0.25641025641025644}
+
+Actual:
+{'compound': 0.44043357076016854, 'positive': 0.7435897435897436, 'negative': 0.0, 'neutral': 0.25641025641025644}
 ```
 
 ## Testing multiple records

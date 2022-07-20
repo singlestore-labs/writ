@@ -1,4 +1,4 @@
-#!/bin/env bash
+#!/usr/bin/env bash
 
 DOCKER=$(command -v docker)
 if [ -z "${DOCKER}" ] ; then
@@ -26,6 +26,9 @@ Options:
                            JSON-formatted inputs to use in place of in-line 
                            arguments (see "Batch File Format", below)
   -d, --debug              Runs the Wasm module in GDB
+  -e, --expect <EXPECTSTR> Specifies an expected result in JSON form. If not
+                           matched, the program exits with the error code 2. May
+                           not be used with -b.
   -q, --quiet              Suppress result output
   -s, --source <SRCDIR>    Specifies a source code directory; may be used
                            multiple times (only valid with -d)
@@ -56,6 +59,8 @@ BATCH_PATH=
 USER_GDB_OPTS=
 QUIET=0
 VERBOSE=0
+WRIT_EXPECT_OPT=
+WRIT_EXPECT_VAL=
 while [ 1 ] ; do
     case "$1" in
         -d|--debug)
@@ -107,6 +112,17 @@ while [ 1 ] ; do
                 exit 1
             fi
             BATCH_PATH=$(readlink -f $1)
+            ;;
+        -e|--expect)
+            shift
+            [ -z "$1" ] && usage
+            if [ -n "$EXPECT" ] ; then
+                echo "ERROR: Expected value may only be specified once."
+                echo
+                usage
+            fi
+            WRIT_EXPECT_OPT="--expect"
+            WRIT_EXPECT_VAL="$1"
             ;;
         -q|--quiet)
             QUIET=1
@@ -185,6 +201,7 @@ fi
     ghcr.io/singlestore-labs/writ   \
     ${GDB_OPTS}                     \
     ${WRIT_OPTS}                    \
+    ${WRIT_EXPECT_OPT} "${WRIT_EXPECT_VAL}" \
     "/wasm-dir/${WASM_NAME}"        \
     "${WASM_FUNC}"                  \
     "$@"

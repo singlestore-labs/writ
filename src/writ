@@ -23,6 +23,7 @@ class Imports:
     wasm_file: str
     func: str
     args: list[str]
+    expected: str
     classes: dict
 
     def __init__(self, args) -> None:
@@ -35,6 +36,7 @@ class Imports:
         self.args = args.ARGS
         self.is_verbose = args.is_verbose
         self.is_quiet = args.is_quiet
+        self.expected = args.EXPECTSTR
 
         self.batch = None
         self.batch_ctr = -1
@@ -108,7 +110,7 @@ class Imports:
 
         assert(type(self.args) is list)
 
-    def get_types(self, class_name: str) -> list[typing.Any]:
+    def get_types(self, class_name: str) -> tuple[list[typing.Any], typing.Any]:
         py_import_classes = inspect.getmembers(
             self.imported,
             lambda x: inspect.isclass(x) and x.__name__ == class_name,
@@ -124,9 +126,11 @@ class Imports:
             abort(f"ERROR: Function {self.func} is not found in {py_import_class}. Check if your function name is correct or if you have included it.")
         py_func = py_funcs[0][1]
         signatures = inspect.signature(py_func)
-        return [
-            signatures.parameters[x].annotation for x in signatures.parameters.keys()
-        ]
+
+        prms = [signatures.parameters[x].annotation for x in signatures.parameters.keys()][2:]
+        ret = signatures.return_annotation
+
+        return (prms, ret)
 
     def run_without_wit_arg(
         self, linker: wasmtime.Linker, store: wasmtime.Store, module: wasmtime.Module
@@ -173,6 +177,13 @@ class Imports:
                 abort(f"ERROR: Invocation of function '{self.func}' failed.\nDetails: {e}")
             assert(type(res) is int or type(res) is float)
 
+            if self.expected:
+                if str(res) != self.expected:
+                    if not self.is_quiet:
+                        print("ERROR: Actual result does not match expected:")
+                        print(f"\nExpected:\n{self.expected}\n\nActual:\n{res}")
+                    os._exit(2)
+
             if i > 0:
                 assert(self.batch)
                 self.emit(", ")
@@ -181,11 +192,11 @@ class Imports:
         if self.batch:
             self.emit("]\n")
 
-    def fixup_args(self, types: list[typing.Any]) -> list[typing.Any]:
-        assert(len(self.args) == len(types))
+    def fixup_args(self, types: list[typing.Any], vals: list[str], is_ret: bool) -> list[typing.Any]:
+        assert(len(vals) == len(types))
         fixed = []
-        for i in range(0, len(self.args)):
-            s = self.args[i]
+        for i in range(0, len(vals)):
+            s = vals[i]
             if types[i] == str:
                 # Tolerate not surrounding strings with quotes.  Add them if a 
                 # top-level argument appears without them.
@@ -196,13 +207,19 @@ class Imports:
                 try:
                     v = float(s)
                 except:
-                    abort(f"ERROR: Value at index {i} could not be converted to a float.")
+                    if is_ret:
+                        abort(f"ERROR: Expected value could not be converted to a float.")
+                    else:
+                        abort(f"ERROR: Value at index {i} could not be converted to a float.")
                 s = str(v)
             elif types[i] == int:
                 try:
                     v = int(s)
                 except:
-                    abort(f"ERROR: Value at index {i} could not be converted to an int.")
+                    if is_ret:
+                        abort(f"ERROR: Expected value could not be converted to an int.")
+                    else:
+                        abort(f"ERROR: Value at index {i} could not be converted to an int.")
                 s = str(v)
 
             fixed.append(s)
@@ -221,7 +238,18 @@ class Imports:
 
         # process arguments
         py_class_name = "".join(x.capitalize() for x in resolved_wit_name.split("_"))
-        type_list = self.get_types(py_class_name)
+        (prm_types, ret_type) = self.get_types(py_class_name)
+
+        expected_json_obj = None
+        if self.expected is not None:
+            fixed_exp = self.fixup_args([ret_type], [self.expected], True)[0]
+            if self.is_verbose:
+                print("INFO: Fixed up expected: {}".format(fixed_exp))
+            try:
+                expected_json_obj = json.loads(fixed_exp)
+            except Exception as e:
+                abort(f"ERROR: Expect string was improperly formatted; should be {ret_type}.  Error from JSON parser: {e}")
+            assert(expected_json_obj is not None)
 
         # call the class in self_imported files that has the same name as the py_class on necessary parameters
 
@@ -243,19 +271,19 @@ class Imports:
         for i in range(0, num_recs):
             self.prepare_next_row()
 
-            if len(self.args) != len(type_list[2:]):
-                abort(f"ERROR: Argument mismatch{rec_info(i)}.  Expected {len(type_list[2:])} arguments, but got {len(self.args)}.")
+            if len(self.args) != len(prm_types):
+                abort(f"ERROR: Argument mismatch{rec_info(i)}.  Expected {len(prm_types)} arguments, but got {len(self.args)}.")
 
             result = None
             try:
-                fixed_args = self.fixup_args(type_list[2:])
+                fixed_args = self.fixup_args(prm_types, self.args, False)
                 if self.is_verbose:
                     print("INFO: Fixed up arguments: {}".format(fixed_args))
                 json_args = []
                 for index in range(0, len(fixed_args)):
                     json_args.append(json_utils.check_and_load(fixed_args, index))
                 args = parse_args_helper.parse_json_args(
-                    list(zip(json_args, type_list[2:]))
+                    list(zip(json_args, prm_types))
                 )
                 result = getattr(wasm, self.func)(store, *args)
             except wasmtime._trap.Trap as t:
@@ -267,8 +295,16 @@ class Imports:
                 )
             assert(result is not None)
 
-            py_str_out = json_utils.to_py_obj(result)
-            json_str_out = json.dumps(py_str_out, indent=2)
+            py_obj_out = json_utils.to_py_obj(result)
+            json_str_out = json.dumps(py_obj_out, indent=2)
+
+            if expected_json_obj is not None:
+                json_obj_out = json.loads(json_str_out)
+                if json_obj_out != expected_json_obj:
+                    if not self.is_quiet:
+                        print("ERROR: Actual result does not match expected:")
+                        print(f"\nExpected:\n{self.expected}\n\nActual:\n{json_obj_out}")
+                    os._exit(2)
 
             if i > 0:
                 assert(self.batch)

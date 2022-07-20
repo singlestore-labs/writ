@@ -48,6 +48,14 @@ Batch File Format:
 ''',
     )
     parser.add_argument(
+        "-e",
+        "--expect",
+        dest="EXPECTSTR",
+        default=None,
+        required=False,
+        help="Specifies an expected result in JSON form.  If not matched, the program exits with the error code 2.  May not be used with -b.",
+    )
+    parser.add_argument(
         "-c",
         "--cache",
         dest="CACHEDIR",
@@ -119,6 +127,10 @@ Batch File Format:
     args = parser.parse_args()
     if args.BATCHFILE and len(args.ARGS) > 0:
         print("ERROR: Batch input (-b) may not be specified with in-line input.", file=sys.stderr)
+        parser.print_help()
+        os._exit(1)
+    if args.BATCHFILE and args.EXPECTSTR is not None:
+        print("ERROR: Batch input (-b) may not be specified with an expected result (-e).", file=sys.stderr)
         parser.print_help()
         os._exit(1)
 
