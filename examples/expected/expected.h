@@ -4,15 +4,15 @@
 extern "C"
 {
   #endif
-  
+
   #include <stdint.h>
   #include <stdbool.h>
-  
+
   typedef struct {
     char *ptr;
     size_t len;
   } power_string_t;
-  
+
   void power_string_set(power_string_t *ret, const char *s);
   void power_string_dup(power_string_t *ret, const char *s);
   void power_string_free(power_string_t *ret);

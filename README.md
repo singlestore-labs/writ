@@ -4,7 +4,7 @@ This is a CLI tool that, given a WIT specification, will correctly interpret and
 
 When no WIT file is provided, the arguments will be interpreted as basic types the same way `wasmtime --invoke` works
 
-To facilitate expression of complex types, this tool accepts JSON notation as input, and produces JSON notation as output.  For more information, please see the [examples](#examples) section below. 
+To facilitate expression of complex types, this tool accepts JSON notation as input, and produces JSON notation as output.  For more information, please see the [examples](#examples) section below.
 
 # Usage
 You may use this tool locally, or via a [Docker](#building-and-running-the-docker-image) container.
@@ -36,7 +36,7 @@ Specifies 0 or more arguments to pass into the Wasm function.  Complex arguments
 *Options:*
 `-b, --batch BATCHFILE`
 * Specifies a path to a file containing one or more JSON-formatted inputs to use in place of in-line arguments (see [Batch File Format](batch-file-format), below).
-    
+
 `-d, --debug`
 * Starts the Wasm program in GDB.  See [Debugging](debugging), below.
 
@@ -108,7 +108,7 @@ Specifies 0 or more arguments to pass into the Wasm function.  Complex arguments
 
 `-c, --cache CACHEDIR`
 * Specifies a directory to use for the binding cache.  To help save time on repeated runs, `writ` can cache its generated bindings in a directory and re-use them again later.  You can specify the location of this directory with this option.
-    
+
 `-e, --expect EXPECTSTR`
 * Specifies an expected result to JSON form.  If not matched, the program exits with the error code 2.  May not be used with -b.
 
@@ -162,11 +162,11 @@ Each entry in the outer-most list represents the arguments for a single call int
 
 When a batch file is in use, output will be formatted in a similar way, with each outer list entry corresponding to one record of input.
 
-# Examples 
+# Examples
 All of the examples below apply equally to both `writ` and `writ-docker`.
 
 ## Simple numeric arguments
-This example passes simple numerics as arguments.  Due to the simplicity of the 
+This example passes simple numerics as arguments.  Due to the simplicity of the
 parameter types (all numeric), a WIT file is optional.
 ```sh
 bin/writ --wit examples/int/power.wit examples/int/power.wasm power-of 2 3
@@ -253,7 +253,7 @@ Here, we'll test splitting some strings.  We use the `--batch` option for this.
 e
 ```sh
 cat<<EOF > /tmp/writ-test.json
-[ 
+[
   ["first_string_to_test", "_"],
   ["second-string-to-test", "_"],
   ["third-string_to__test", "_"],
@@ -323,4 +323,3 @@ For this, you will need [Docker](https://docs.docker.com/engine/install/) instal
 ```bash
 docker build -f docker/Dockerfile -t ghcr.io/singlestore-labs/writ .
 ```
-

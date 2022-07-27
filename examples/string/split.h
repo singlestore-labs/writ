@@ -4,15 +4,15 @@
 extern "C"
 {
   #endif
-  
+
   #include <stdint.h>
   #include <stdbool.h>
-  
+
   typedef struct {
     char *ptr;
     size_t len;
   } split_string_t;
-  
+
   void split_string_set(split_string_t *ret, const char *s);
   void split_string_dup(split_string_t *ret, const char *s);
   void split_string_free(split_string_t *ret);

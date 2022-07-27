@@ -88,7 +88,7 @@ void split_split_str(split_string_t *phrase, split_string_t *delim, split_list_s
         }
     }
     subs.push_back(std::pair<std::string, size_t>(phr.substr(start), start));
-    
+
     // Populate the result.
     bool err = false;
     auto res = (split_subphrase_t *) malloc(phr.size() * sizeof(split_subphrase_t));
@@ -118,10 +118,9 @@ void split_split_str(split_string_t *phrase, split_string_t *delim, split_list_s
                     free(res[i].str.ptr);
             free(res);
         }
-    } 
+    }
 
     // Per the Canonical ABI contract, free the input pointers.
     free(phrase->ptr);
     free(delim->ptr);
 }
-

@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-from typing import Optional
-import contextlib
-import error_handler
+from __future__ import annotations
+
 import importlib
 import inspect
 import json
-import json_utils
 import os
-import parse_input
 import re
-import subprocess
 import sys
 import textwrap
 import typing
+from typing import Optional
+
+import error_handler
+import json_utils
+import parse_input
 import validate
 import wasmtime
-
 from error_handler import abort
+
 
 class Imports:
     wit_name: Optional[str]
@@ -29,7 +30,7 @@ class Imports:
     def __init__(self, args) -> None:
         cache_path = args.CACHEDIR
         batch_path = args.BATCHFILE
-        wit_path   = args.WITFILE
+        wit_path = args.WITFILE
 
         self.wasm_file = args.WASMFILE
         self.func = args.FUNCNAME
@@ -41,48 +42,54 @@ class Imports:
         self.batch = None
         self.batch_ctr = -1
         if batch_path is not None:
-            assert(len(self.args) == 0)
-            f = None
+            assert len(self.args) == 0
             try:
-                try:
-                    f = open(batch_path)
-                except Exception as e:
-                    abort(f"ERROR: Could not open batch file '{batch_path}': {e}")
-                assert(f)
+                with open(batch_path) as f:
+                    assert f
+                    # We risk running out of memory with this approach, but the
+                    # easy workaround is just to break batch files into separate
+                    # parts, so I'm going to take the easy way out right now.
+                    try:
+                        self.batch = json.load(f)
+                    except MemoryError:
+                        abort(
+                            'ERROR: Out of memory while reading batch JSON file; try breaking it into smaller parts.',
+                        )
+                    except Exception as e:
+                        abort(
+                            f'ERROR: Unexpected problem loading JSON file: {e}',
+                        )
 
-                # We risk running out of memory with this approach, but the
-                # easy workaround is just to break batch files into separate
-                # parts, so I'm going to take the easy way out right now.
-                try:
-                    self.batch = json.load(f)
-                except MemoryError:
-                    abort(f"ERROR: Out of memory while reading batch JSON file; try breaking it into smaller parts.")
-                except Exception as e:
-                    abort(f"ERROR: Unexpected problem loading JSON file: {e}")
-            finally:
-                if f:
-                    f.close()
+            except Exception as e:
+                abort(
+                    f"ERROR: Could not open batch file '{batch_path}': {e}",
+                )
 
             # Batch input should be a list type, and at least one row.
             if type(self.batch) is not list:
-                abort("ERROR: Batch input must be a list of single values, or a list of lists.")
+                abort(
+                    'ERROR: Batch input must be a list of single values, or a list of lists.',
+                )
             if self.batch is None or len(self.batch) == 0:
-                abort(f"ERROR: The batch file '{batch_path}' contained no rows.")
+                abort(
+                    f"ERROR: The batch file '{batch_path}' contained no rows.",
+                )
 
         if wit_path is None:
             self.wit_name = None
         else:
-            self.wit_name = re.findall(r"[^\/]+(?=\.)", wit_path)[-1]
+            self.wit_name = re.findall(r'[^\/]+(?=\.)', wit_path)[-1]
 
             # generate bindings
-            export_name = f"{self.wit_name}_export_bindings"
-            import_name = f"{self.wit_name}_import_bindings"
-            export_path = os.path.join(cache_path, f"{export_name}.py")
-            import_path = os.path.join(cache_path, f"{import_name}.py")
-            wit_cached_path = os.path.join(cache_path, f"{self.wit_name}.wit")
+            export_name = f'{self.wit_name}_export_bindings'
+            import_name = f'{self.wit_name}_import_bindings'
+            export_path = os.path.join(cache_path, f'{export_name}.py')
+            import_path = os.path.join(cache_path, f'{import_name}.py')
+            wit_cached_path = os.path.join(cache_path, f'{self.wit_name}.wit')
 
             WIT_BINDGEN_PATH = validate.check_command(
-                "WRIT_WITBINDGEN_PATH", "wit-bindgen"
+                'WRIT_WITBINDGEN_PATH',
+                'wit-bindgen',
             )
 
             validate.check_cached_file_or_generate(
@@ -100,7 +107,7 @@ class Imports:
 
     def prepare_next_row(self) -> None:
         if self.batch:
-            assert(self.batch_ctr + 1 < len(self.batch))
+            assert self.batch_ctr + 1 < len(self.batch)
 
             self.batch_ctr += 1
             if type(self.batch[self.batch_ctr]) is not list:
@@ -108,7 +115,7 @@ class Imports:
             else:
                 self.args = self.batch[self.batch_ctr]
 
-        assert(type(self.args) is list)
+        assert type(self.args) is list
 
     def get_types(self, class_name: str) -> tuple[list[typing.Any], typing.Any]:
         py_import_classes = inspect.getmembers(
@@ -116,26 +123,37 @@ class Imports:
             lambda x: inspect.isclass(x) and x.__name__ == class_name,
         )
         if not py_import_classes:
-            abort(f"ERROR: Class {class_name} is not found in {self.imported}. Check your wit/wasm fle name or function name and try again.")
+            abort(
+                f'ERROR: Class {class_name} is not found in {self.imported}.'
+                'Check your wit/wasm fle name or function name and try again.',
+            )
         py_import_class = py_import_classes[0][1]
         py_funcs = inspect.getmembers(
             py_import_class,
             lambda x: inspect.isfunction(x) and x.__name__ == self.func,
         )
         if not py_funcs:
-            abort(f"ERROR: Function {self.func} is not found in {py_import_class}. Check if your function name is correct or if you have included it.")
+            abort(
+                f'ERROR: Function {self.func} is not found in {py_import_class}.'
+                'Check if your function name is correct or if you have included it.',
+            )
         py_func = py_funcs[0][1]
         signatures = inspect.signature(py_func)
 
-        prms = [signatures.parameters[x].annotation for x in signatures.parameters.keys()][2:]
+        prms = [
+            signatures.parameters[x].annotation for x in signatures.parameters.keys()
+        ][2:]
         ret = signatures.return_annotation
 
         return (prms, ret)
 
     def run_without_wit_arg(
-        self, linker: wasmtime.Linker, store: wasmtime.Store, module: wasmtime.Module
+        self,
+        linker: wasmtime.Linker,
+        store: wasmtime.Store,
+        module: wasmtime.Module,
     ) -> None:
-        maybe_func = linker.get(store, "test", self.func)
+        maybe_func = linker.get(store, 'test', self.func)
         func: wasmtime.Func
         if not isinstance(maybe_func, wasmtime.Func):
             abort(f"ERROR: The symbol '{self.func}' is not a Wasm function.")
@@ -144,12 +162,18 @@ class Imports:
 
         if self.batch:
             num_recs = len(self.batch)
-            rec_info = lambda idx: f" at record {idx+1}"
+
+            def rec_info(idx):
+                return f' at record {idx+1}'
+
             out_indent = 2
-            self.emit("[\n")
+            self.emit('[\n')
         else:
             num_recs = 1
-            rec_info = lambda idx: ""
+
+            def rec_info(idx):
+                return ''
+
             out_indent = 0
 
         # Get the type so we can validate the params.
@@ -159,7 +183,9 @@ class Imports:
             self.prepare_next_row()
 
             if len(self.args) != len(ftype.params):
-                abort(f"ERROR: Argument mismatch{rec_info(i)}.  Expected {len(ftype.params)} arguments, but got {len(self.args)}.")
+                abort(
+                    f'ERROR: Argument mismatch{rec_info(i)}.  Expected {len(ftype.params)} arguments, but got {len(self.args)}.',
+                )
 
             fixed_args = []
             for j in range(0, len(self.args)):
@@ -169,36 +195,43 @@ class Imports:
                 if expected == expected.i32() or expected == expected.i64():
                     fixed_args.append(int(self.args[j]))
                 else:
-                    abort(f"ERROR: Wasm function argument type at index {j} is not currently supported by writ.")
+                    abort(
+                        f'ERROR: Wasm function argument type at index {j} is not currently supported by writ.',
+                    )
 
             try:
                 res = func(store, *fixed_args)
             except Exception as e:
-                abort(f"ERROR: Invocation of function '{self.func}' failed.\nDetails: {e}")
-            assert(type(res) is int or type(res) is float)
+                abort(
+                    f"ERROR: Invocation of function '{self.func}' failed.\nDetails: {e}",
+                )
+            assert type(res) is int or type(res) is float
 
-            if self.expected:
-                if str(res) != self.expected:
-                    if not self.is_quiet:
-                        print("ERROR: Actual result does not match expected:")
-                        print(f"\nExpected:\n{self.expected}\n\nActual:\n{res}")
-                    os._exit(2)
+            if self.expected and str(res) != self.expected:
+                if not self.is_quiet:
+                    print('ERROR: Actual result does not match expected:')
+                    print(
+                        f'\nExpected:\n{self.expected}\n\nActual:\n{res}',
+                    )
+                os._exit(2)
 
             if i > 0:
-                assert(self.batch)
-                self.emit(", ")
+                assert self.batch
+                self.emit(', ')
             self.emit(f"{' '*out_indent}{res}\n")
 
         if self.batch:
-            self.emit("]\n")
+            self.emit(']\n')
 
-    def fixup_args(self, types: list[typing.Any], vals: list[str], is_ret: bool) -> list[typing.Any]:
-        assert(len(vals) == len(types))
+    def fixup_args(
+        self, types: list[typing.Any], vals: list[str], is_ret: bool,
+    ) -> list[typing.Any]:
+        assert len(vals) == len(types)
         fixed = []
         for i in range(0, len(vals)):
             s = vals[i]
             if types[i] == str:
-                # Tolerate not surrounding strings with quotes.  Add them if a 
+                # Tolerate not surrounding strings with quotes.  Add them if a
                 # top-level argument appears without them.
                 if len(s) <= 1 or (s[0] != '"' and s[-1] != '"'):
                     s = '"' + s + '"'
@@ -206,50 +239,66 @@ class Imports:
                 # Coerce numeric types into a float representation.
                 try:
                     v = float(s)
-                except:
+                except ValueError:
                     if is_ret:
-                        abort(f"ERROR: Expected value could not be converted to a float.")
+                        abort(
+                            'ERROR: Expected value could not be converted to a float.',
+                        )
                     else:
-                        abort(f"ERROR: Value at index {i} could not be converted to a float.")
+                        abort(
+                            f'ERROR: Value at index {i} could not be converted to a float.',
+                        )
                 s = str(v)
             elif types[i] == int:
                 try:
                     v = int(s)
-                except:
+                except ValueError:
                     if is_ret:
-                        abort(f"ERROR: Expected value could not be converted to an int.")
+                        abort(
+                            'ERROR: Expected value could not be converted to an int.',
+                        )
                     else:
-                        abort(f"ERROR: Value at index {i} could not be converted to an int.")
+                        abort(
+                            f'ERROR: Value at index {i} could not be converted to an int.',
+                        )
                 s = str(v)
 
             fixed.append(s)
         return fixed
 
     def run_with_wit_arg(
-        self, linker: wasmtime.Linker, store: wasmtime.Store, module: wasmtime.Module
+        self,
+        linker: wasmtime.Linker,
+        store: wasmtime.Store,
+        module: wasmtime.Module,
     ) -> None:
         resolved_wit_name = validate.resolve_string(self.wit_name)
-        linker_func_name = "add_" + resolved_wit_name + "_to_linker"
+        linker_func_name = 'add_' + resolved_wit_name + '_to_linker'
 
         linker_func = getattr(self.exported, linker_func_name)
         linker_func(linker, store, self)
 
-        self.func = self.func.replace("-", "_")
+        self.func = self.func.replace('-', '_')
 
         # process arguments
-        py_class_name = "".join(x.capitalize() for x in resolved_wit_name.split("_"))
+        py_class_name = ''.join(
+            x.capitalize()
+            for x in resolved_wit_name.split('_')
+        )
         (prm_types, ret_type) = self.get_types(py_class_name)
 
         expected_json_obj = None
         if self.expected is not None:
             fixed_exp = self.fixup_args([ret_type], [self.expected], True)[0]
             if self.is_verbose:
-                print("INFO: Fixed up expected: {}".format(fixed_exp))
+                print('INFO: Fixed up expected: {}'.format(fixed_exp))
             try:
                 expected_json_obj = json.loads(fixed_exp)
             except Exception as e:
-                abort(f"ERROR: Expect string was improperly formatted; should be {ret_type}.  Error from JSON parser: {e}")
-            assert(expected_json_obj is not None)
+                abort(
+                    f'ERROR: Expect string was improperly formatted; should be {ret_type}.  Error from JSON parser: {e}',
+                )
+            assert expected_json_obj is not None
 
         # call the class in self_imported files that has the same name as the py_class on necessary parameters
 
@@ -260,40 +309,52 @@ class Imports:
 
         if self.batch:
             num_recs = len(self.batch)
-            rec_info = lambda idx: f" at record {idx+1}"
+
+            def rec_info(idx):
+                return f' at record {idx+1}'
+
             out_indent = 2
-            self.emit("[\n")
+            self.emit('[\n')
         else:
             num_recs = 1
-            rec_info = lambda idx: ""
+
+            def rec_info(idx):
+                return ''
+
             out_indent = 0
 
         for i in range(0, num_recs):
             self.prepare_next_row()
 
             if len(self.args) != len(prm_types):
-                abort(f"ERROR: Argument mismatch{rec_info(i)}.  Expected {len(prm_types)} arguments, but got {len(self.args)}.")
+                abort(
+                    f'ERROR: Argument mismatch{rec_info(i)}.  Expected {len(prm_types)} arguments, but got {len(self.args)}.',
+                )
 
             result = None
             try:
                 fixed_args = self.fixup_args(prm_types, self.args, False)
                 if self.is_verbose:
-                    print("INFO: Fixed up arguments: {}".format(fixed_args))
+                    print('INFO: Fixed up arguments: {}'.format(fixed_args))
                 json_args = []
                 for index in range(0, len(fixed_args)):
-                    json_args.append(json_utils.check_and_load(fixed_args, index))
+                    json_args.append(
+                        json_utils.check_and_load(fixed_args, index),
+                    )
                 args = parse_args_helper.parse_json_args(
-                    list(zip(json_args, prm_types))
+                    list(zip(json_args, prm_types)),
                 )
                 result = getattr(wasm, self.func)(store, *args)
             except wasmtime._trap.Trap as t:
-                abort(f'ERROR: Wasm function trapped on the following input{rec_info(i)}:\n{self.args}\n\nDetails:\n{t}')
-            except:
+                abort(
+                    f'ERROR: Wasm function trapped on the following input{rec_info(i)}:\n{self.args}\n\nDetails:\n{t}',
+                )
+            except Exception as e:
                 raise error_handler.Error(
                     error_handler.ErrorCode.UNKNOWN,
-                    "Unknown error when running the command.",
+                    f'Unknown error when running the command. {e}',
                 )
-            assert(result is not None)
+            assert result is not None
 
             py_obj_out = json_utils.to_py_obj(result)
             json_str_out = json.dumps(py_obj_out, indent=2)
@@ -302,24 +363,27 @@ class Imports:
                 json_obj_out = json.loads(json_str_out)
                 if json_obj_out != expected_json_obj:
                     if not self.is_quiet:
-                        print("ERROR: Actual result does not match expected:")
-                        print(f"\nExpected:\n{self.expected}\n\nActual:\n{json_obj_out}")
+                        print('ERROR: Actual result does not match expected:')
+                        print(
+                            f'\nExpected:\n{self.expected}\n\nActual:\n{json_obj_out}',
+                        )
                     os._exit(2)
 
             if i > 0:
-                assert(self.batch)
-                self.emit(",\n")
-            self.emit(textwrap.indent(json_str_out, " "*out_indent))
+                assert self.batch
+                self.emit(',\n')
+            self.emit(textwrap.indent(json_str_out, ' ' * out_indent))
 
         if self.batch:
             if i > 0:
-                self.emit("\n")
-            self.emit("]\n")
-        self.emit("\n")
+                self.emit('\n')
+            self.emit(']\n')
+        self.emit('\n')
 
     def emit(self, s: str) -> None:
         if not self.is_quiet:
             sys.stdout.write(s)
+
 
 def run() -> None:
     args = parse_input.parse()
@@ -331,7 +395,7 @@ def run() -> None:
     config = wasmtime.Config()
     if args.is_debug_info:
         config.debug_info = True
-        config.cranelift_opt_level = "none"
+        config.cranelift_opt_level = 'none'
 
     engine = wasmtime.Engine(config)
 
@@ -342,7 +406,7 @@ def run() -> None:
         module = wasmtime.Module.from_file(store.engine, imports.wasm_file)
         linker = wasmtime.Linker(store.engine)
         linker.define_wasi()
-        linker.define_module(store, "test", module)
+        linker.define_module(store, 'test', module)
         wasi = wasmtime.WasiConfig()
         wasi.inherit_stdout()
         wasi.inherit_stderr()
@@ -350,23 +414,25 @@ def run() -> None:
 
         #  invoke _initialize export
         try:
-            maybe_func = linker.get(store, "test", "_initialize")
+            maybe_func = linker.get(store, 'test', '_initialize')
             if isinstance(maybe_func, wasmtime.Func):
                 maybe_func(store)
             else:
-                print("WARNING: _initialize symbol is not a function; skipping invocation.", file=sys.stderr)
-        except:
+                print(
+                    'WARNING: _initialize symbol is not a function; skipping invocation.',
+                    file=sys.stderr,
+                )
+        except Exception:
             if imports.is_verbose:
-                print("WARNING: Failed to invoke _initialize.", file=sys.stderr)
+                print('WARNING: Failed to invoke _initialize.', file=sys.stderr)
 
         if imports.wit_name is not None:
             imports.run_with_wit_arg(linker, store, module)
         else:
             imports.run_without_wit_arg(linker, store, module)
     except Exception as e:
-        abort(f"ERROR: Failed to invoke wasm module: {e}.")
+        abort(f'ERROR: Failed to invoke wasm module: {e}.')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run()
-

@@ -16,14 +16,14 @@ Arguments:
   WASMFILE  Specifies the path to the Wasm module (.wasm file)
   FUNCNAME  Specifies the Wasm function name to run
   ARG...    Specifies 0 or more arguments to pass into the Wasm function.
-            Complex arguments may be expressed in JSON format.  May not be 
+            Complex arguments may be expressed in JSON format.  May not be
             used with the -b option
 
 Options:
   -a, --debug-args <ARGS>  Passes the given string as additional arguments into
                            GDB (only valid with -d)
-  -b, --batch <BATCHFILE>  Specifies a path to a file containing one or more 
-                           JSON-formatted inputs to use in place of in-line 
+  -b, --batch <BATCHFILE>  Specifies a path to a file containing one or more
+                           JSON-formatted inputs to use in place of in-line
                            arguments (see "Batch File Format", below)
   -d, --debug              Runs the Wasm module in GDB
   -e, --expect <EXPECTSTR> Specifies an expected result in JSON form. If not
@@ -37,9 +37,9 @@ Options:
 
 Batch File Format:
   A JSON-formatted file may be passed in lieu of in-line arguments.  This file
-  must consist of either a list of lists or a list of single values.  For 
+  must consist of either a list of lists or a list of single values.  For
   example, either of the following forms will work:
-  
+
   [                                    [
     "John Lennon",          OR           [ "John Lennon", "Guitar", 1940 ],
     "Paul McCartney",                    [ "Paul McCartney", "Bass", 1942 ],
@@ -205,4 +205,3 @@ fi
     "/wasm-dir/${WASM_NAME}"        \
     "${WASM_FUNC}"                  \
     "$@"
-
