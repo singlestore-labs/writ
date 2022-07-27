@@ -16,4 +16,3 @@ RUN cd wasmtime-py && python3 download-wasmtime.py && python3 setup.py install &
 RUN cd writ && python3 setup.py install
 
 ENTRYPOINT ["/writ/bin/writ"]
-

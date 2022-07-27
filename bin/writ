@@ -14,4 +14,3 @@ if [ ${PY_SUBVER} -lt 9 ] ; then
 fi
 
 exec ${PYTHON3} ${MYDIR}/../src/writ "$@"
-

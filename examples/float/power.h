@@ -4,7 +4,7 @@
 extern "C"
 {
   #endif
-  
+
   #include <stdint.h>
   #include <stdbool.h>
   float power_power_of(float a, float b);

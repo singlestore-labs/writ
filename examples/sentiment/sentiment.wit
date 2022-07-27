@@ -9,4 +9,3 @@ sentiment: func(input: string, ) -> polarity-scores
 wit-source-get: func() -> string
 
 wit-source-print: func()
-

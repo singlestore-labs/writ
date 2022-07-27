@@ -36,4 +36,3 @@ int32_t power_power_of(int32_t base, int32_t exp) {
     }
     return res;
 }
-

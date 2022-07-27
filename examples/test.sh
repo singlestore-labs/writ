@@ -60,7 +60,7 @@ function run_align {
 }
 
 function run_alloc {
-  local size=100000  
+  local size=100000
   echo "running alloc test, function alloc-blob with arguments: $size"
   $writ --wit $wit_path/alloc.wit $test_path/modules/alloc.wasm alloc-blob $size
   echo ""
@@ -68,7 +68,7 @@ function run_alloc {
 
 function run_createthread {
   echo "running createthread test, function create-thread with arguments: "
-  $writ --wit $wit_path/createthread.wit $test_path/modules/createthread.wasm create-thread 
+  $writ --wit $wit_path/createthread.wit $test_path/modules/createthread.wasm create-thread
   echo ""
 }
 
@@ -129,7 +129,7 @@ function run_prime {
   local a=2
   local b=10
   echo "running prime test with arguments $a "
-  $writ $wasm_path/prime.wasm is-prime $a 
+  $writ $wasm_path/prime.wasm is-prime $a
   echo "running prime test with arguments $b "
   $writ --wit $wit_path/prime.wit $test_path/modules/prime.wasm is-prime $b
   echo ""
@@ -139,7 +139,7 @@ function run_plus {
   local a=2
   local b=10
   echo "running plus test with arguments $a $b"
-  $writ $wasm_path/plus.wasm plus $a $b 
+  $writ $wasm_path/plus.wasm plus $a $b
   echo ""
 }
 
@@ -157,9 +157,9 @@ function run_types-basicabi {
   echo "running test_f64 test with arguments: $f64"
   $writ $wasm_path/types-basicabi.wasm test_f64 $f64
   echo "running test_noarg test with arguments: "
-  $writ $wasm_path/types-basicabi.wasm test_noarg 
+  $writ $wasm_path/types-basicabi.wasm test_noarg
   echo "running test_noret test with arguments: "
-  $writ $wasm_path/types-basicabi.wasm test_noret 
+  $writ $wasm_path/types-basicabi.wasm test_noret
   echo "running test_noargnoret test with arguments: "
   $writ $wasm_path/types-basicabi.wasm test_noargnoret
 }
@@ -175,14 +175,14 @@ function run_tests {
 #  run_mult
 #  run_align
 #  run_alloc
-  run_deeparg 
+  run_deeparg
 #  run_hilbert
 #  run_filter_users
 #  run_passthru
 #  run_prime
-#  run_plus 
+#  run_plus
 #  run_types-basicabi
-#  run_infinite 
+#  run_infinite
 }
 
 run_tests

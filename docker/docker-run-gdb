@@ -14,4 +14,3 @@ eval `resize`
 
 cd /writ
 gdb "$@"
-

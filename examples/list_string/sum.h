@@ -4,15 +4,15 @@
 extern "C"
 {
   #endif
-  
+
   #include <stdint.h>
   #include <stdbool.h>
-  
+
   typedef struct {
     char *ptr;
     size_t len;
   } sum_string_t;
-  
+
   void sum_string_set(sum_string_t *ret, const char *s);
   void sum_string_dup(sum_string_t *ret, const char *s);
   void sum_string_free(sum_string_t *ret);

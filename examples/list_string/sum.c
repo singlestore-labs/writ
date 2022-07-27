@@ -59,5 +59,3 @@ int32_t sum_sum_length(sum_list_string_t *a) {
   }
   return res;
 }
-
-

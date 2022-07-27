@@ -12,4 +12,3 @@ hilbert-encode: func(input: hilbert-input, ) -> list<hilbert-output>
 wit-source-get: func() -> string
 
 wit-source-print: func()
-
