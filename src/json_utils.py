@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import typing
 
@@ -15,7 +16,7 @@ def check_and_load(json_args: typing.List[str], index: int) -> str:
             f'ERROR: Failed to load json object at index {str(index - 1)}. Check your json syntax again.',
             file=sys.stderr,
         )
-        sys.exit(1)
+        os._exit(1)
     return loaded_json
 
 
@@ -32,7 +33,7 @@ def to_py_obj(pyobj: str) -> typing.Any:
         error_handler.ErrorCode.PYOBJ_TO_PYSTR_FAILED,
         f'ERROR: Convert following Python type: {type(pyobj)} to Python str is not implemented',
     )
-    sys.exit(1)
+    os._exit(1)
 
 
 def is_atomic_type(arg: typing.Any) -> bool:
@@ -66,7 +67,7 @@ class ParseJson:
                     f'ERROR: Type mismatch between {arg_value} and {arg_type}. Check your input again.',
                     file=sys.stderr,
                 )
-                sys.exit(1)
+                os._exit(1)
             return arg_value
         elif arg_type is bytes:
             # if arg type is bytes, arg value type is assumed to be in form of

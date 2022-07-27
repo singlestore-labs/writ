@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from enum import Enum
 
@@ -10,7 +11,7 @@ def eprint(s):
 
 def abort(s):
     eprint(s)
-    sys.exit(1)
+    os._exit(1)
 
 
 class ErrorCode(Enum):

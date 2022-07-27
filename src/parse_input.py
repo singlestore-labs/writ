@@ -139,13 +139,13 @@ Batch File Format:
             file=sys.stderr,
         )
         parser.print_help()
-        sys.exit(1)
+        os._exit(1)
     if args.BATCHFILE and args.EXPECTSTR is not None:
         print(
             'ERROR: Batch input (-b) may not be specified with an expected result (-e).',
             file=sys.stderr,
         )
         parser.print_help()
-        sys.exit(1)
+        os._exit(1)
 
     return args

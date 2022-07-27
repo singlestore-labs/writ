@@ -213,7 +213,7 @@ class Imports:
                     print(
                         f'\nExpected:\n{self.expected}\n\nActual:\n{res}',
                     )
-                sys.exit(2)
+                os._exit(2)
 
             if i > 0:
                 assert self.batch
@@ -367,7 +367,7 @@ class Imports:
                         print(
                             f'\nExpected:\n{self.expected}\n\nActual:\n{json_obj_out}',
                         )
-                    sys.exit(2)
+                    os._exit(2)
 
             if i > 0:
                 assert self.batch
