@@ -1,6 +1,6 @@
-# WRIT (WASM Reactor Interface Tester)
+# WRIT (Wasm Reactor Interface Tester)
 
-This is a CLI tool that, given a WIT specification, will correctly interpret and cast arguments for an arbitrarily specified function in a Wasm module, and run it.  In particular, this tool is be useful when writing and testing WASM modules using the Canonical ABI.
+This is a CLI tool that, given a WIT specification, will correctly interpret and cast arguments for an arbitrarily specified function in a Wasm module, and run it.  In particular, this tool is be useful when writing and testing Wasm modules using the Canonical ABI.
 
 When no WIT file is provided, the arguments will be interpreted as basic types the same way `wasmtime --invoke` works
 
