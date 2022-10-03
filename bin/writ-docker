@@ -52,6 +52,11 @@ EOF
     exit 1
 }
 
+get-full-path()
+{
+    echo $(cd $(dirname $1) && pwd)/$(basename $1)
+}
+
 DEBUG=0
 SRC_DIRS=()
 WIT_PATH=
@@ -83,7 +88,7 @@ while [ 1 ] ; do
                 echo "ERROR: The source directory '$1' does not exist.  Aborting."
                 exit 1
             fi
-            SRC_DIRS+=($(readlink -f $1))
+            SRC_DIRS+=($(get-full-path $1))
             ;;
         -w|--wit)
             shift
@@ -97,7 +102,7 @@ while [ 1 ] ; do
                 echo "ERROR: The WIT file '$1' does not exist.  Aborting."
                 exit 1
             fi
-            WIT_PATH=$(readlink -f $1)
+            WIT_PATH=$(get-full-path $1)
             ;;
         -b|--batch)
             shift
@@ -111,7 +116,7 @@ while [ 1 ] ; do
                 echo "ERROR: The file '$1' does not exist.  Aborting."
                 exit 1
             fi
-            BATCH_PATH=$(readlink -f $1)
+            BATCH_PATH=$(get-full-path $1)
             ;;
         -e|--expect)
             shift
@@ -147,7 +152,7 @@ if [ ${#SRC_DIRS[@]} -gt 0 -a $DEBUG -eq 0 ] ; then
     usage
 fi
 
-WASM_PATH=$(readlink -f $1)
+WASM_PATH=$(get-full-path $1)
 shift
 WASM_FUNC=$1
 shift
@@ -197,12 +202,22 @@ if [ ${DEBUG} -eq 1 ] ; then
     WRIT_OPTS="${WRIT_OPTS} --debug-info"
 fi
 
-"${DOCKER}" run ${DOCKER_RUN_ARGS}  \
-    ghcr.io/singlestore-labs/writ   \
-    ${GDB_OPTS}                     \
-    ${WRIT_OPTS}                    \
-    ${WRIT_EXPECT_OPT} "${WRIT_EXPECT_VAL}" \
-    "/wasm-dir/${WASM_NAME}"        \
-    "${WASM_FUNC}"                  \
-    "$@"
+if [ -z "${WRIT_EXPECT_OPT}" ] ; then
+    "${DOCKER}" run ${DOCKER_RUN_ARGS}  \
+        ghcr.io/singlestore-labs/writ   \
+        ${GDB_OPTS}                     \
+        ${WRIT_OPTS}                    \
+        "/wasm-dir/${WASM_NAME}"        \
+        "${WASM_FUNC}"                  \
+        "$@"
+else
+    "${DOCKER}" run ${DOCKER_RUN_ARGS}  \
+        ghcr.io/singlestore-labs/writ   \
+        ${GDB_OPTS}                     \
+        ${WRIT_OPTS}                    \
+        ${WRIT_EXPECT_OPT} "${WRIT_EXPECT_VAL}" \
+        "/wasm-dir/${WASM_NAME}"        \
+        "${WASM_FUNC}"                  \
+        "$@"
+fi
 
