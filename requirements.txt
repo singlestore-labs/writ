@@ -1,2 +1,2 @@
-wasmtime
+wasmtime=0.37.0
 
